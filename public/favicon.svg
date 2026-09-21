@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="shrtly-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+    <linearGradient id="shrtly-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="shrtly-silver" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+  </defs>
+  <!-- Squircle canvas -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#shrtly-bg)" stroke="#27272a" stroke-width="1.5"/>
+  <!-- Modern Interlocking Link Nodes forming subtle 'S' -->
+  <path d="M26 23 C21 23 18 26 18 31 C18 36 21 39 26 39 H32" stroke="url(#shrtly-silver)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 41 C43 41 46 38 46 33 C46 28 43 25 38 25 H32" stroke="url(#shrtly-accent)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="26" y1="32" x2="38" y2="32" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+</svg>

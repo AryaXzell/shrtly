@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Primary Page Metadata -->
+    <title>SHRTLY — Fast, Minimalist & Privacy-First URL Shortener</title>
+    <meta name="title" content="SHRTLY — Fast, Minimalist & Privacy-First URL Shortener" />
+    <meta name="description" content="Create fast, clean short links with zero tracking, custom aliases, and non-reusable codes. Manage URLs anonymously with real-time privacy-focused analytics." />
+    <meta name="keywords" content="url shortener, link shortener, short link, privacy shortener, anonymous link management, custom alias, qr code generator, link analytics" />
+    <meta name="author" content="SHRTLY" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Favicons & App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/jpeg" href="/app-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/app-icon.jpg" />
+    <link rel="shortcut icon" href="/favicon.svg" />
+
+    <!-- Open Graph / Facebook / LinkedIn / Slack -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://shrtly.app" />
+    <meta property="og:site_name" content="SHRTLY" />
+    <meta property="og:title" content="SHRTLY — Fast, Minimalist & Privacy-First URL Shortener" />
+    <meta property="og:description" content="Create fast, clean short links with zero tracking, custom aliases, and non-reusable codes. Manage URLs anonymously with real-time privacy-focused analytics." />
+    <meta property="og:image" content="/app-icon.jpg" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="1024" />
+    <meta property="og:image:alt" content="SHRTLY App Icon" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@shrtly" />
+    <meta name="twitter:creator" content="@shrtly" />
+    <meta name="twitter:title" content="SHRTLY — Fast, Minimalist & Privacy-First URL Shortener" />
+    <meta name="twitter:description" content="Create fast, clean short links with zero tracking, custom aliases, and non-reusable codes. Manage URLs anonymously with real-time privacy-focused analytics." />
+    <meta name="twitter:image" content="/app-icon.jpg" />
+    <meta name="twitter:image:alt" content="SHRTLY App Icon" />
+
+    <!-- Mobile Safari & PWA Web App Meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SHRTLY" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+
+    <!-- Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "SHRTLY",
+      "url": "https://shrtly.app",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "All",
+      "description": "Fast, quiet, privacy-conscious URL shortener with non-reusable short codes, anonymous management, and clean analytics.",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Non-reusable short codes (tombstone protection)",
+        "Anonymous client management via local high-entropy tokens",
+        "Custom short aliases with reserved word validation",
+        "Configurable expiration intervals (1h, 24h, 7d, 30d, custom date)",
+        "Real-time privacy-preserving click metrics and audit logs",
+        "High-resolution QR code generator"
+      ]
+    }
+    </script>
+
+    <!-- Immediate Theme Initialization (Prevents theme flash) -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('shrtly_theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (saved === 'dark' || (!saved || saved === 'system') && prefersDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 antialiased selection:bg-neutral-900 selection:text-white dark:selection:bg-white dark:selection:text-neutral-900">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
