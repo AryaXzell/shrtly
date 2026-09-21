@@ -106,6 +106,34 @@ export default function App() {
     }
   }, []);
 
+  // Global keyboard shortcut (Ctrl+K / Cmd+K) for fast link creation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K or Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSelectedLinkForDetail(null);
+        setLinkToDelete(null);
+        setLinkToEdit(null);
+        setLinkForQR(null);
+        setCodeForReport(null);
+        setActiveTab('home');
+
+        // Focus input field smoothly
+        setTimeout(() => {
+          const input = document.getElementById('main-url-input') as HTMLInputElement | null;
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 50);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Fetch links & health check
   const refreshLinks = useCallback(async () => {
     try {
@@ -136,7 +164,7 @@ export default function App() {
   const handleToggleStatus = async (link: LinkRecord) => {
     const nextStatus = link.status === 'active' ? 'disabled' : 'active';
     try {
-      const updated = await toggleLinkStatus(link.internal_id, nextStatus);
+      const updated = await toggleLinkStatus(link.internal_id, nextStatus, link.code);
       setLinks((prev) =>
         prev.map((l) => (l.internal_id === updated.internal_id ? updated : l))
       );
@@ -156,7 +184,7 @@ export default function App() {
   // Handler for Destination Edit
   const handleSaveDestination = async (newDestination: string) => {
     if (!linkToEdit) return;
-    const updated = await updateLinkDestination(linkToEdit.internal_id, newDestination);
+    const updated = await updateLinkDestination(linkToEdit.internal_id, newDestination, linkToEdit.code);
     setLinks((prev) =>
       prev.map((l) => (l.internal_id === updated.internal_id ? updated : l))
     );
@@ -169,7 +197,7 @@ export default function App() {
   // Handler for Deletion (Soft vs Server permanent)
   const handleConfirmDelete = async (permanent: boolean) => {
     if (!linkToDelete) return;
-    const res = await deleteLink(linkToDelete.internal_id, permanent);
+    const res = await deleteLink(linkToDelete.internal_id, permanent, linkToDelete.code);
     // Remove from UI links list
     setLinks((prev) => prev.filter((l) => l.internal_id !== linkToDelete.internal_id));
 
@@ -182,6 +210,59 @@ export default function App() {
         ? `Tautan /${res.code} dan analitiknya telah dihapus permanen dari server.`
         : `Tautan /${res.code} telah dihapus dari kelola Anda.`
     );
+  };
+
+  // Handler for Bulk Status Toggle
+  const handleBulkToggleStatus = async (
+    selectedLinks: LinkRecord[],
+    nextStatus: 'active' | 'disabled'
+  ) => {
+    try {
+      const promises = selectedLinks.map((l) =>
+        toggleLinkStatus(l.internal_id, nextStatus, l.code).catch(() => null)
+      );
+      const results = await Promise.all(promises);
+      const updatedLinks = results.filter((r): r is LinkRecord => r !== null);
+
+      setLinks((prev) =>
+        prev.map((l) => {
+          const found = updatedLinks.find((u) => u.internal_id === l.internal_id);
+          return found || l;
+        })
+      );
+
+      showToast(
+        nextStatus === 'active'
+          ? `${updatedLinks.length} tautan berhasil diaktifkan.`
+          : `${updatedLinks.length} tautan berhasil dinonaktifkan.`
+      );
+    } catch {
+      showToast('Gagal mengubah status beberapa tautan.', 'error');
+    }
+  };
+
+  // Handler for Bulk Delete
+  const handleBulkDelete = async (selectedLinks: LinkRecord[], permanent: boolean) => {
+    try {
+      const promises = selectedLinks.map((l) =>
+        deleteLink(l.internal_id, permanent, l.code).catch(() => null)
+      );
+      await Promise.all(promises);
+      const deletedIds = new Set(selectedLinks.map((l) => l.internal_id));
+      setLinks((prev) => prev.filter((l) => !deletedIds.has(l.internal_id)));
+
+      if (selectedLinkForDetail && deletedIds.has(selectedLinkForDetail.internal_id)) {
+        setSelectedLinkForDetail(null);
+      }
+
+      showToast(
+        permanent
+          ? `${selectedLinks.length} tautan telah dihapus permanen dari server.`
+          : `${selectedLinks.length} tautan telah dihapus dari kelola Anda.`
+      );
+    } catch {
+      showToast('Gagal menghapus beberapa tautan.', 'error');
+    }
   };
 
   // Render Status View if navigated to /status
@@ -374,6 +455,8 @@ export default function App() {
                 onEditDestination={(l) => setLinkToEdit(l)}
                 onToggleStatus={handleToggleStatus}
                 onDelete={(l) => setLinkToDelete(l)}
+                onBulkToggleStatus={handleBulkToggleStatus}
+                onBulkDelete={handleBulkDelete}
               />
             </motion.div>
           ) : (

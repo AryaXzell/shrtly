@@ -69,7 +69,7 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
     >
       <div
         id="qr-modal-container"
-        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center"
+        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center animate-in fade-in zoom-in-95 duration-200"
       >
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">

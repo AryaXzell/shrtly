@@ -43,8 +43,8 @@ export async function createShortLink(
     throw new Error(err?.error?.message || 'Failed to create short link');
   }
 
-  // Save the management token locally
-  saveManagementToken(data.link.internal_id, data.management_token);
+  // Save the management token locally (keyed by both internalId and code)
+  saveManagementToken(data.link.internal_id, data.management_token, data.link.code);
   return data;
 }
 
@@ -66,77 +66,102 @@ export async function listOwnerLinks(): Promise<LinkRecord[]> {
   return data.links;
 }
 
-export async function getLinkAnalytics(internalId: string): Promise<LinkAnalytics> {
-  const token = getManagementTokenForLink(internalId);
+export async function getLinkAnalytics(internalId: string, code?: string): Promise<LinkAnalytics> {
+  const token = getManagementTokenForLink(internalId) || (code ? getManagementTokenForLink(code) : null);
+  const ownerId = getOrCreateOwnerId();
+  const headers: Record<string, string> = {
+    'x-owner-id': ownerId,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`/api/links/${internalId}`, {
-    headers: {
-      Authorization: `Bearer ${token || ''}`,
-    },
+    headers,
   });
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.error?.message || 'Failed to load link analytics');
+    throw new Error(data?.error?.message || 'Gagal memuat analitik tautan');
   }
   return data.analytics;
 }
 
-export async function updateLinkDestination(internalId: string, newDestination: string): Promise<LinkRecord> {
-  const token = getManagementTokenForLink(internalId);
+export async function updateLinkDestination(internalId: string, newDestination: string, code?: string): Promise<LinkRecord> {
+  const token = getManagementTokenForLink(internalId) || (code ? getManagementTokenForLink(code) : null);
+  const ownerId = getOrCreateOwnerId();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-owner-id': ownerId,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`/api/links/${internalId}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token || ''}`,
-    },
+    headers,
     body: JSON.stringify({ destination: newDestination }),
   });
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.error?.message || 'Failed to update destination');
+    throw new Error(data?.error?.message || 'Gagal memperbarui tautan');
   }
   return data.link;
 }
 
-export async function toggleLinkStatus(internalId: string, status: 'active' | 'disabled'): Promise<LinkRecord> {
-  const token = getManagementTokenForLink(internalId);
+export async function toggleLinkStatus(internalId: string, status: 'active' | 'disabled', code?: string): Promise<LinkRecord> {
+  const token = getManagementTokenForLink(internalId) || (code ? getManagementTokenForLink(code) : null);
+  const ownerId = getOrCreateOwnerId();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-owner-id': ownerId,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`/api/links/${internalId}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token || ''}`,
-    },
+    headers,
     body: JSON.stringify({ status }),
   });
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.error?.message || 'Failed to change link status');
+    throw new Error(data?.error?.message || 'Gagal mengubah status tautan');
   }
   return data.link;
 }
 
 export async function deleteLink(
   internalId: string,
-  permanentServerDelete: boolean
+  permanentServerDelete: boolean,
+  code?: string
 ): Promise<{ success: boolean; code: string; wasPermanent: boolean; message: string }> {
-  const token = getManagementTokenForLink(internalId);
+  const token = getManagementTokenForLink(internalId) || (code ? getManagementTokenForLink(code) : null);
+  const ownerId = getOrCreateOwnerId();
+  const headers: Record<string, string> = {
+    'x-owner-id': ownerId,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`/api/links/${internalId}?permanent=${permanentServerDelete}`, {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${token || ''}`,
-    },
+    headers,
   });
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.error?.message || 'Failed to delete link');
+    throw new Error(data?.error?.message || 'Gagal menghapus tautan');
   }
 
   // Remove local management token if permanently deleted
   if (permanentServerDelete) {
-    removeManagementToken(internalId);
+    removeManagementToken(internalId, code);
   }
   return data;
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Flag, X, Check, AlertCircle } from 'lucide-react';
+import { Flag, X, Check, AlertCircle, ShieldAlert } from 'lucide-react';
 import { reportLinkAbuse } from '../utils/api';
+import { IOSDropdown } from './IOSDropdown';
 
 interface ReportModalProps {
   code: string;
@@ -78,17 +79,19 @@ export const ReportModal: React.FC<ReportModalProps> = ({ code, isOpen, onClose 
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                 Kategori Masalah
               </label>
-              <select
+              <IOSDropdown
+                id="report-category-select"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-              >
-                <option value="phishing">Phishing / Pencurian Kredensial</option>
-                <option value="malware">Malware / Virus / File Berbahaya</option>
-                <option value="spam">Spam / Tautan Mengganggu</option>
-                <option value="scam">Penipuan Keuangan / Scam</option>
-                <option value="other">Lainnya</option>
-              </select>
+                onChange={(val) => setCategory(val)}
+                fullWidth={true}
+                options={[
+                  { value: 'phishing', label: 'Phishing / Pencurian Kredensial' },
+                  { value: 'malware', label: 'Malware / Virus / File Berbahaya' },
+                  { value: 'spam', label: 'Spam / Tautan Mengganggu' },
+                  { value: 'scam', label: 'Penipuan Keuangan / Scam' },
+                  { value: 'other', label: 'Lainnya' },
+                ]}
+              />
             </div>
 
             <div>

@@ -7,8 +7,8 @@
     <!-- Primary Page Metadata -->
     <title>SHRTLY — Fast, Minimalist & Privacy-First URL Shortener</title>
     <meta name="title" content="SHRTLY — Fast, Minimalist & Privacy-First URL Shortener" />
-    <meta name="description" content="Create fast, clean short links with zero tracking, custom aliases, and non-reusable codes. Manage URLs anonymously with real-time privacy-focused analytics." />
-    <meta name="keywords" content="url shortener, link shortener, short link, privacy shortener, anonymous link management, custom alias, qr code generator, link analytics" />
+    <meta name="description" content="Persingkat tautan secara aman dengan kode sekali pakai, tanpa pelacakan, dan analitik real-time yang privat. Kelola URL secara anonim dengan mudah." />
+    <meta name="keywords" content="url shortener, link shortener, short link, privacy shortener, pemendek url, penyingkat tautan, anonymous link management, custom alias, qr code generator, link analytics" />
     <meta name="author" content="SHRTLY" />
     <meta name="robots" content="index, follow" />
 
@@ -18,17 +18,40 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/app-icon.jpg" />
     <link rel="shortcut icon" href="/favicon.svg" />
 
-    <!-- Open Graph / Facebook / LinkedIn / Slack -->
+    <!-- Open Graph / Facebook / LinkedIn / Slack / Social Cards -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://shrtly.app" />
     <meta property="og:site_name" content="SHRTLY" />
     <meta property="og:title" content="SHRTLY — Fast, Minimalist & Privacy-First URL Shortener" />
-    <meta property="og:description" content="Create fast, clean short links with zero tracking, custom aliases, and non-reusable codes. Manage URLs anonymously with real-time privacy-focused analytics." />
+    <meta property="og:description" content="Persingkat tautan secara aman dengan kode sekali pakai, tanpa pelacakan, dan analitik real-time yang privat. Kelola URL secara anonim dengan mudah." />
     <meta property="og:image" content="/app-icon.jpg" />
     <meta property="og:image:width" content="1024" />
     <meta property="og:image:height" content="1024" />
     <meta property="og:image:alt" content="SHRTLY App Icon" />
-    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- Dynamic Canonical URL and Social Meta Alignment -->
+    <script>
+      (function() {
+        try {
+          var currentUrl = window.location.origin + window.location.pathname;
+          
+          // Create or update canonical link tag
+          var canonicalLink = document.createElement('link');
+          canonicalLink.setAttribute('rel', 'canonical');
+          canonicalLink.setAttribute('href', currentUrl);
+          document.head.appendChild(canonicalLink);
+          
+          // Create or update og:url meta tag
+          var ogUrlMeta = document.createElement('meta');
+          ogUrlMeta.setAttribute('property', 'og:url');
+          ogUrlMeta.setAttribute('content', currentUrl);
+          document.head.appendChild(ogUrlMeta);
+        } catch (e) {
+          console.error('SEO Dynamic Link Configuration failed:', e);
+        }
+      })();
+    </script>
 
     <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />

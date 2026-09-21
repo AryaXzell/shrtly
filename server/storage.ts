@@ -47,6 +47,7 @@ export interface IStorageEngine {
   isUpstashConfigured(): boolean;
   checkHealth(): Promise<HealthCheckResult>;
   reserveCode(code: string, internalId: string): Promise<boolean>;
+  releaseCode(code: string): Promise<void>;
   tombstoneCode(code: string): Promise<void>;
   createLink(data: {
     code: string;
@@ -59,17 +60,16 @@ export interface IStorageEngine {
   }): Promise<{ link: LinkRecord; management_token: string }>;
   getLinkByCode(code: string): Promise<LinkRecord | null>;
   getLinkByInternalId(internalId: string): Promise<LinkRecord | null>;
-  verifyManagementToken(internalId: string, token: string): Promise<boolean>;
-  listLinksByOwner(ownerId: string, tokens?: string[]): Promise<LinkRecord[]>;
-  updateDestination(internalId: string, newDestination: string, token: string): Promise<LinkRecord>;
-  toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token: string): Promise<LinkRecord>;
-  deleteLink(internalId: string, token: string, permanentServerDelete: boolean): Promise<{ success: boolean; code: string; wasPermanent: boolean }>;
+  verifyManagementToken(internalId: string, token?: string, ownerId?: string): Promise<boolean>;
+  listLinksByOwner(ownerId?: string, tokens?: string[]): Promise<LinkRecord[]>;
+  updateDestination(internalId: string, newDestination: string, token?: string, ownerId?: string): Promise<LinkRecord>;
+  toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token?: string, ownerId?: string): Promise<LinkRecord>;
+  deleteLink(internalId: string, token?: string, permanentServerDelete?: boolean, ownerId?: string): Promise<{ success: boolean; code: string; wasPermanent: boolean }>;
   recordClick(code: string, clientInfo: { referrer?: string; userAgent?: string; country?: string }): Promise<void>;
-  getAnalytics(internalId: string, token: string): Promise<LinkAnalytics | null>;
+  getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null>;
   recordReport(code: string, category: string, notes: string, clientIp: string): Promise<void>;
   checkRateLimit(key: string, maxRequests: number, windowSeconds: number): Promise<{ allowed: boolean; remaining: number; resetTimeSeconds: number }>;
-  claimLink(internalId: string, newOwnerId: string, token: string): Promise<LinkRecord>;
-  getAllLinksForExport(ownerId: string, tokens?: string[]): Promise<LinkRecord[]>;
+  getAllLinksForExport(ownerId?: string, tokens?: string[]): Promise<LinkRecord[]>;
 }
 
 // Helper to hash management token
@@ -107,12 +107,12 @@ class LocalStorageEngine implements IStorageEngine {
         if (Array.isArray(parsed.links)) {
           for (const item of parsed.links) {
             this.links.set(item.link.internal_id, item);
-            this.codeToId.set(item.link.code, item.link.internal_id);
+            this.codeToId.set(item.link.code.trim().toLowerCase(), item.link.internal_id);
           }
         }
         if (Array.isArray(parsed.tombstones)) {
           for (const t of parsed.tombstones) {
-            this.tombstones.add(t);
+            this.tombstones.add(t.trim().toLowerCase());
           }
         }
         if (Array.isArray(parsed.reports)) {
@@ -162,7 +162,7 @@ class LocalStorageEngine implements IStorageEngine {
   }
 
   async reserveCode(code: string, internalId: string): Promise<boolean> {
-    const normalized = code.trim();
+    const normalized = code.trim().toLowerCase();
     if (this.tombstones.has(normalized)) {
       return false; // Code was previously used and tombstoned!
     }
@@ -173,8 +173,15 @@ class LocalStorageEngine implements IStorageEngine {
     return true;
   }
 
+  async releaseCode(code: string): Promise<void> {
+    const normalized = code.trim().toLowerCase();
+    if (this.codeToId.get(normalized) === 'pending') {
+      this.codeToId.delete(normalized);
+    }
+  }
+
   async tombstoneCode(code: string): Promise<void> {
-    this.tombstones.add(code.trim());
+    this.tombstones.add(code.trim().toLowerCase());
     this.scheduleSave();
   }
 
@@ -220,20 +227,34 @@ class LocalStorageEngine implements IStorageEngine {
     };
 
     this.links.set(internalId, storedData);
-    this.codeToId.set(data.code, internalId);
+    this.codeToId.set(data.code.trim().toLowerCase(), internalId);
     this.scheduleSave();
 
     return { link, management_token: data.management_token };
   }
 
+  saveDirectLink(link: LinkRecord, tokenHash: string, audit: AuditLogEntry): void {
+    const storedData: StoredLinkData = {
+      link,
+      management_token_hash: tokenHash,
+      analytics: {
+        clicks: [],
+        audit_logs: [audit],
+      },
+    };
+    this.links.set(link.internal_id, storedData);
+    this.codeToId.set(link.code.trim().toLowerCase(), link.internal_id);
+    this.scheduleSave();
+  }
+
   async getLinkByCode(code: string): Promise<LinkRecord | null> {
-    const normalized = code.trim();
+    const normalized = code.trim().toLowerCase();
     let internalId = this.codeToId.get(normalized);
 
     // Self-heal: if codeToId is missing or stuck at 'pending', scan existing links
     if (!internalId || internalId === 'pending') {
       for (const [id, item] of this.links.entries()) {
-        if (item.link.code === normalized || item.link.code.toLowerCase() === normalized.toLowerCase()) {
+        if (item.link.code.trim().toLowerCase() === normalized) {
           internalId = id;
           this.codeToId.set(normalized, id);
           break;
@@ -282,20 +303,21 @@ class LocalStorageEngine implements IStorageEngine {
     return link;
   }
 
-  async verifyManagementToken(internalId: string, token: string): Promise<boolean> {
-    const item = this.links.get(internalId);
+  async verifyManagementToken(internalId: string, token?: string, ownerId?: string): Promise<boolean> {
+    const item = this.links.get(internalId) || (this.codeToId.has(internalId) ? this.links.get(this.codeToId.get(internalId)!) : undefined);
     if (!item) return false;
-    const incomingHash = hashToken(token);
-    return item.management_token_hash === incomingHash;
+    if (token && item.management_token_hash === hashToken(token)) return true;
+    if (ownerId && item.link.owner_id === ownerId) return true;
+    return false;
   }
 
-  async listLinksByOwner(ownerId: string, tokens: string[] = []): Promise<LinkRecord[]> {
+  async listLinksByOwner(ownerId: string = '', tokens: string[] = []): Promise<LinkRecord[]> {
     const tokenHashes = new Set(tokens.map((t) => hashToken(t)));
     const results: LinkRecord[] = [];
 
     for (const item of this.links.values()) {
-      const matchOwner = ownerId && item.link.owner_id === ownerId;
-      const matchToken = tokenHashes.has(item.management_token_hash);
+      const matchOwner = Boolean(ownerId && item.link.owner_id === ownerId);
+      const matchToken = Boolean(tokens.length > 0 && tokenHashes.has(item.management_token_hash));
 
       if ((matchOwner || matchToken) && item.link.status !== 'deleted') {
         const link = { ...item.link };
@@ -312,10 +334,12 @@ class LocalStorageEngine implements IStorageEngine {
     return results.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
-  async updateDestination(internalId: string, newDestination: string, token: string): Promise<LinkRecord> {
-    const item = this.links.get(internalId);
+  async updateDestination(internalId: string, newDestination: string, token?: string, ownerId?: string): Promise<LinkRecord> {
+    const item = this.links.get(internalId) || (this.codeToId.has(internalId) ? this.links.get(this.codeToId.get(internalId)!) : undefined);
     if (!item) throw new Error('Link not found');
-    if (item.management_token_hash !== hashToken(token)) throw new Error('Unauthorized');
+    const isTokenMatch = Boolean(token && item.management_token_hash === hashToken(token));
+    const isOwnerMatch = Boolean(ownerId && item.link.owner_id === ownerId);
+    if (!isTokenMatch && !isOwnerMatch) throw new Error('Unauthorized');
 
     const oldDest = item.link.destination;
     item.link.destination = newDestination;
@@ -332,10 +356,12 @@ class LocalStorageEngine implements IStorageEngine {
     return item.link;
   }
 
-  async toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token: string): Promise<LinkRecord> {
-    const item = this.links.get(internalId);
+  async toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token?: string, ownerId?: string): Promise<LinkRecord> {
+    const item = this.links.get(internalId) || (this.codeToId.has(internalId) ? this.links.get(this.codeToId.get(internalId)!) : undefined);
     if (!item) throw new Error('Link not found');
-    if (item.management_token_hash !== hashToken(token)) throw new Error('Unauthorized');
+    const isTokenMatch = Boolean(token && item.management_token_hash === hashToken(token));
+    const isOwnerMatch = Boolean(ownerId && item.link.owner_id === ownerId);
+    if (!isTokenMatch && !isOwnerMatch) throw new Error('Unauthorized');
 
     item.link.status = status;
     item.link.updated_at = new Date().toISOString();
@@ -353,12 +379,15 @@ class LocalStorageEngine implements IStorageEngine {
 
   async deleteLink(
     internalId: string,
-    token: string,
-    permanentServerDelete: boolean
+    token?: string,
+    permanentServerDelete: boolean = false,
+    ownerId?: string
   ): Promise<{ success: boolean; code: string; wasPermanent: boolean }> {
-    const item = this.links.get(internalId);
+    const item = this.links.get(internalId) || (this.codeToId.has(internalId) ? this.links.get(this.codeToId.get(internalId)!) : undefined);
     if (!item) throw new Error('Link not found');
-    if (item.management_token_hash !== hashToken(token)) throw new Error('Unauthorized');
+    const isTokenMatch = Boolean(token && item.management_token_hash === hashToken(token));
+    const isOwnerMatch = Boolean(ownerId && item.link.owner_id === ownerId);
+    if (!isTokenMatch && !isOwnerMatch) throw new Error('Unauthorized');
 
     const code = item.link.code;
 
@@ -436,10 +465,15 @@ class LocalStorageEngine implements IStorageEngine {
     this.scheduleSave();
   }
 
-  async getAnalytics(internalId: string, token: string): Promise<LinkAnalytics | null> {
-    const item = this.links.get(internalId);
+  async getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null> {
+    let item = this.links.get(internalId);
+    if (!item) {
+      const resolvedId = this.codeToId.get(internalId) || this.codeToId.get(internalId.toLowerCase());
+      if (resolvedId) {
+        item = this.links.get(resolvedId);
+      }
+    }
     if (!item) return null;
-    if (item.management_token_hash !== hashToken(token)) throw new Error('Unauthorized');
 
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
@@ -457,8 +491,8 @@ class LocalStorageEngine implements IStorageEngine {
     const browserMap: Map<string, number> = new Map();
     const countryMap: Map<string, number> = new Map();
 
-    // Initialize last 7 days buckets
-    for (let i = 6; i >= 0; i--) {
+    // Initialize last 30 days buckets
+    for (let i = 29; i >= 0; i--) {
       const d = new Date(now - i * oneDay).toISOString().split('T')[0];
       dateMap.set(d, 0);
     }
@@ -539,24 +573,6 @@ class LocalStorageEngine implements IStorageEngine {
     return { allowed: false, remaining: 0, resetTimeSeconds: remainingSeconds };
   }
 
-  async claimLink(internalId: string, newOwnerId: string, token: string): Promise<LinkRecord> {
-    const item = this.links.get(internalId);
-    if (!item) throw new Error('Link not found');
-    if (item.management_token_hash !== hashToken(token)) throw new Error('Unauthorized');
-
-    item.link.owner_id = newOwnerId;
-    item.link.updated_at = new Date().toISOString();
-    item.analytics.audit_logs.unshift({
-      id: crypto.randomUUID(),
-      timestamp: item.link.updated_at,
-      event: 'claimed',
-      details: `Claimed by user account`,
-    });
-
-    this.scheduleSave();
-    return item.link;
-  }
-
   async getAllLinksForExport(ownerId: string, tokens: string[] = []): Promise<LinkRecord[]> {
     return this.listLinksByOwner(ownerId, tokens);
   }
@@ -609,30 +625,46 @@ class UpstashStorageEngine implements IStorageEngine {
   }
 
   async reserveCode(code: string, internalId: string): Promise<boolean> {
+    const normalized = code.trim().toLowerCase();
     try {
-      const isTombstoned = await this.redis.sismember('shrtly:codes:tombstones', code);
+      const isTombstoned = await this.redis.sismember('shrtly:codes:tombstones', normalized);
       if (isTombstoned) return false;
 
       // SETNX atomic operation
-      const success = await this.redis.set(`shrtly:code:${code}`, internalId, { nx: true });
+      const success = await this.redis.set(`shrtly:code:${normalized}`, internalId, { nx: true });
       if (success) {
-        await this.redis.sadd('shrtly:codes:active', code);
+        await this.redis.sadd('shrtly:codes:active', normalized);
         return true;
       }
       return false;
     } catch (err) {
       console.warn('Redis error during reserveCode, falling back to local engine:', err);
-      return this.fallback.reserveCode(code, internalId);
+      return this.fallback.reserveCode(normalized, internalId);
     }
   }
 
-  async tombstoneCode(code: string): Promise<void> {
+  async releaseCode(code: string): Promise<void> {
+    const normalized = code.trim().toLowerCase();
     try {
-      await this.redis.del(`shrtly:code:${code}`);
-      await this.redis.srem('shrtly:codes:active', code);
-      await this.redis.sadd('shrtly:codes:tombstones', code);
+      const current = await this.redis.get<string>(`shrtly:code:${normalized}`);
+      if (current === 'pending') {
+        await this.redis.del(`shrtly:code:${normalized}`);
+        await this.redis.srem('shrtly:codes:active', normalized);
+      }
     } catch {
-      await this.fallback.tombstoneCode(code);
+      // ignore
+    }
+    await this.fallback.releaseCode(normalized);
+  }
+
+  async tombstoneCode(code: string): Promise<void> {
+    const normalized = code.trim().toLowerCase();
+    try {
+      await this.redis.del(`shrtly:code:${normalized}`);
+      await this.redis.srem('shrtly:codes:active', normalized);
+      await this.redis.sadd('shrtly:codes:tombstones', normalized);
+    } catch {
+      await this.fallback.tombstoneCode(normalized);
     }
   }
 
@@ -648,6 +680,7 @@ class UpstashStorageEngine implements IStorageEngine {
     try {
       const internalId = crypto.randomUUID();
       const tokenHash = hashToken(data.management_token);
+      const normalizedCode = data.code.trim().toLowerCase();
 
       const link: LinkRecord = {
         internal_id: internalId,
@@ -678,11 +711,11 @@ class UpstashStorageEngine implements IStorageEngine {
       await this.redis.rpush(`shrtly:audit:${internalId}`, JSON.stringify(audit));
 
       // Persist direct code mapping and active code set in Redis
-      await this.redis.set(`shrtly:code:${data.code}`, internalId);
-      await this.redis.sadd('shrtly:codes:active', data.code);
+      await this.redis.set(`shrtly:code:${normalizedCode}`, internalId);
+      await this.redis.sadd('shrtly:codes:active', normalizedCode);
 
-      // Also mirror to local fallback for dual safety
-      await this.fallback.createLink(data);
+      // Mirror to local fallback with the EXACT SAME internal_id and token_hash
+      this.fallback.saveDirectLink(link, tokenHash, audit);
 
       return { link, management_token: data.management_token };
     } catch (err) {
@@ -693,7 +726,7 @@ class UpstashStorageEngine implements IStorageEngine {
 
   async getLinkByCode(code: string): Promise<LinkRecord | null> {
     try {
-      const normalized = code.trim();
+      const normalized = code.trim().toLowerCase();
       const isTombstoned = await this.redis.sismember('shrtly:codes:tombstones', normalized);
       if (isTombstoned) {
         return {
@@ -749,45 +782,24 @@ class UpstashStorageEngine implements IStorageEngine {
     }
   }
 
-  async verifyManagementToken(internalId: string, token: string): Promise<boolean> {
+  async verifyManagementToken(internalId: string, token?: string, ownerId?: string): Promise<boolean> {
     try {
-      const hash = await this.redis.hget<string>(`shrtly:link:${internalId}`, 'token_hash');
-      if (!hash) return this.fallback.verifyManagementToken(internalId, token);
-      return hash === hashToken(token);
+      if (token) {
+        const hash = await this.redis.hget<string>(`shrtly:link:${internalId}`, 'token_hash');
+        if (hash && hash === hashToken(token)) return true;
+      }
+      return this.fallback.verifyManagementToken(internalId, token, ownerId);
     } catch {
-      return this.fallback.verifyManagementToken(internalId, token);
+      return this.fallback.verifyManagementToken(internalId, token, ownerId);
     }
   }
 
-  async listLinksByOwner(ownerId: string, tokens: string[] = []): Promise<LinkRecord[]> {
-    try {
-      const linkIds = (await this.redis.smembers(`shrtly:owner:${ownerId}:links`)) || [];
-      const links: LinkRecord[] = [];
-
-      for (const id of linkIds) {
-        const link = await this.getLinkByInternalId(id);
-        if (link && link.status !== 'deleted') {
-          links.push(link);
-        }
-      }
-
-      // Also grab links matching client tokens if any
-      const localLinks = await this.fallback.listLinksByOwner(ownerId, tokens);
-      const mergedMap = new Map<string, LinkRecord>();
-      for (const l of [...links, ...localLinks]) {
-        mergedMap.set(l.internal_id, l);
-      }
-
-      return Array.from(mergedMap.values()).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    } catch {
-      return this.fallback.listLinksByOwner(ownerId, tokens);
-    }
+  async listLinksByOwner(ownerId: string = '', tokens: string[] = []): Promise<LinkRecord[]> {
+    return this.fallback.listLinksByOwner(ownerId, tokens);
   }
 
-  async updateDestination(internalId: string, newDestination: string, token: string): Promise<LinkRecord> {
-    const isAuth = await this.verifyManagementToken(internalId, token);
+  async updateDestination(internalId: string, newDestination: string, token?: string, ownerId?: string): Promise<LinkRecord> {
+    const isAuth = await this.verifyManagementToken(internalId, token, ownerId);
     if (!isAuth) throw new Error('Unauthorized');
 
     const link = await this.getLinkByInternalId(internalId);
@@ -797,13 +809,13 @@ class UpstashStorageEngine implements IStorageEngine {
     link.updated_at = new Date().toISOString();
 
     await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
-    await this.fallback.updateDestination(internalId, newDestination, token);
+    await this.fallback.updateDestination(internalId, newDestination, token, ownerId);
 
     return link;
   }
 
-  async toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token: string): Promise<LinkRecord> {
-    const isAuth = await this.verifyManagementToken(internalId, token);
+  async toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token?: string, ownerId?: string): Promise<LinkRecord> {
+    const isAuth = await this.verifyManagementToken(internalId, token, ownerId);
     if (!isAuth) throw new Error('Unauthorized');
 
     const link = await this.getLinkByInternalId(internalId);
@@ -813,17 +825,18 @@ class UpstashStorageEngine implements IStorageEngine {
     link.updated_at = new Date().toISOString();
 
     await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
-    await this.fallback.toggleLinkStatus(internalId, status, token);
+    await this.fallback.toggleLinkStatus(internalId, status, token, ownerId);
 
     return link;
   }
 
   async deleteLink(
     internalId: string,
-    token: string,
-    permanentServerDelete: boolean
+    token?: string,
+    permanentServerDelete: boolean = false,
+    ownerId?: string
   ): Promise<{ success: boolean; code: string; wasPermanent: boolean }> {
-    const isAuth = await this.verifyManagementToken(internalId, token);
+    const isAuth = await this.verifyManagementToken(internalId, token, ownerId);
     if (!isAuth) throw new Error('Unauthorized');
 
     const link = await this.getLinkByInternalId(internalId);
@@ -844,7 +857,7 @@ class UpstashStorageEngine implements IStorageEngine {
       await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
     }
 
-    await this.fallback.deleteLink(internalId, token, permanentServerDelete);
+    await this.fallback.deleteLink(internalId, token, permanentServerDelete, ownerId);
     return { success: true, code, wasPermanent: permanentServerDelete };
   }
 
@@ -865,7 +878,7 @@ class UpstashStorageEngine implements IStorageEngine {
     await this.fallback.recordClick(code, clientInfo);
   }
 
-  async getAnalytics(internalId: string, token: string): Promise<LinkAnalytics | null> {
+  async getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null> {
     return this.fallback.getAnalytics(internalId, token);
   }
 
@@ -891,24 +904,6 @@ class UpstashStorageEngine implements IStorageEngine {
     } catch {
       return this.fallback.checkRateLimit(key, maxRequests, windowSeconds);
     }
-  }
-
-  async claimLink(internalId: string, newOwnerId: string, token: string): Promise<LinkRecord> {
-    const isAuth = await this.verifyManagementToken(internalId, token);
-    if (!isAuth) throw new Error('Unauthorized');
-
-    const link = await this.getLinkByInternalId(internalId);
-    if (!link) throw new Error('Link not found');
-
-    const oldOwner = link.owner_id;
-    link.owner_id = newOwnerId;
-    link.updated_at = new Date().toISOString();
-
-    await this.redis.srem(`shrtly:owner:${oldOwner}:links`, internalId);
-    await this.redis.sadd(`shrtly:owner:${newOwnerId}:links`, internalId);
-    await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
-
-    return this.fallback.claimLink(internalId, newOwnerId, token);
   }
 
   async getAllLinksForExport(ownerId: string, tokens: string[] = []): Promise<LinkRecord[]> {
@@ -976,6 +971,10 @@ export class DynamicStorageManager implements IStorageEngine {
     return this.active.reserveCode(code, internalId);
   }
 
+  releaseCode(code: string): Promise<void> {
+    return this.active.releaseCode(code);
+  }
+
   tombstoneCode(code: string): Promise<void> {
     return this.active.tombstoneCode(code);
   }
@@ -1000,31 +999,31 @@ export class DynamicStorageManager implements IStorageEngine {
     return this.active.getLinkByInternalId(internalId);
   }
 
-  verifyManagementToken(internalId: string, token: string): Promise<boolean> {
-    return this.active.verifyManagementToken(internalId, token);
+  verifyManagementToken(internalId: string, token?: string, ownerId?: string): Promise<boolean> {
+    return this.active.verifyManagementToken(internalId, token, ownerId);
   }
 
-  listLinksByOwner(ownerId: string, tokens: string[] = []): Promise<LinkRecord[]> {
+  listLinksByOwner(ownerId: string = '', tokens: string[] = []): Promise<LinkRecord[]> {
     return this.active.listLinksByOwner(ownerId, tokens);
   }
 
-  updateDestination(internalId: string, newDestination: string, token: string): Promise<LinkRecord> {
-    return this.active.updateDestination(internalId, newDestination, token);
+  updateDestination(internalId: string, newDestination: string, token?: string, ownerId?: string): Promise<LinkRecord> {
+    return this.active.updateDestination(internalId, newDestination, token, ownerId);
   }
 
-  toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token: string): Promise<LinkRecord> {
-    return this.active.toggleLinkStatus(internalId, status, token);
+  toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token?: string, ownerId?: string): Promise<LinkRecord> {
+    return this.active.toggleLinkStatus(internalId, status, token, ownerId);
   }
 
-  deleteLink(internalId: string, token: string, permanentServerDelete: boolean): Promise<{ success: boolean; code: string; wasPermanent: boolean }> {
-    return this.active.deleteLink(internalId, token, permanentServerDelete);
+  deleteLink(internalId: string, token?: string, permanentServerDelete: boolean = false, ownerId?: string): Promise<{ success: boolean; code: string; wasPermanent: boolean }> {
+    return this.active.deleteLink(internalId, token, permanentServerDelete, ownerId);
   }
 
   recordClick(code: string, clientInfo: { referrer?: string; userAgent?: string; country?: string }): Promise<void> {
     return this.active.recordClick(code, clientInfo);
   }
 
-  getAnalytics(internalId: string, token: string): Promise<LinkAnalytics | null> {
+  getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null> {
     return this.active.getAnalytics(internalId, token);
   }
 
@@ -1036,11 +1035,7 @@ export class DynamicStorageManager implements IStorageEngine {
     return this.active.checkRateLimit(key, maxRequests, windowSeconds);
   }
 
-  claimLink(internalId: string, newOwnerId: string, token: string): Promise<LinkRecord> {
-    return this.active.claimLink(internalId, newOwnerId, token);
-  }
-
-  getAllLinksForExport(ownerId: string, tokens: string[] = []): Promise<LinkRecord[]> {
+  getAllLinksForExport(ownerId: string = '', tokens: string[] = []): Promise<LinkRecord[]> {
     return this.active.getAllLinksForExport(ownerId, tokens);
   }
 }

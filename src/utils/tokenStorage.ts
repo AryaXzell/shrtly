@@ -9,7 +9,11 @@ export function getOrCreateOwnerId(): string {
   if (typeof window === 'undefined') return '';
   let id = localStorage.getItem(OWNER_ID_KEY);
   if (!id) {
-    id = 'anon_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      id = 'anon_' + crypto.randomUUID().replace(/-/g, '');
+    } else {
+      id = 'anon_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
     localStorage.setItem(OWNER_ID_KEY, id);
   }
   return id;
@@ -25,28 +29,35 @@ export function getSavedTokens(): TokenStore {
   }
 }
 
-export function saveManagementToken(internalId: string, token: string): void {
+export function saveManagementToken(internalId: string, token: string, code?: string): void {
   if (typeof window === 'undefined') return;
   const current = getSavedTokens();
   current[internalId] = token;
+  if (code) {
+    current[code] = token;
+  }
   localStorage.setItem(TOKENS_KEY, JSON.stringify(current));
 }
 
-export function removeManagementToken(internalId: string): void {
+export function removeManagementToken(internalId: string, code?: string): void {
   if (typeof window === 'undefined') return;
   const current = getSavedTokens();
   delete current[internalId];
+  if (code) {
+    delete current[code];
+  }
   localStorage.setItem(TOKENS_KEY, JSON.stringify(current));
 }
 
-export function getManagementTokenForLink(internalId: string): string | null {
+export function getManagementTokenForLink(idOrCode: string): string | null {
   const current = getSavedTokens();
-  return current[internalId] || null;
+  if (current[idOrCode]) return current[idOrCode];
+  return null;
 }
 
 export function getAllTokensList(): string[] {
   const current = getSavedTokens();
-  return Object.values(current);
+  return Array.from(new Set(Object.values(current)));
 }
 
 export function clearAllLocalData(): void {

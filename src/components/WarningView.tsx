@@ -17,16 +17,32 @@ export const WarningView: React.FC<WarningViewProps> = ({
 }) => {
   const [showFullUrl, setShowFullUrl] = useState(false);
 
+  const safeDestination = React.useMemo(() => {
+    try {
+      const parsed = new URL(destination);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.toString();
+      }
+    } catch {
+      // Invalid URL
+    }
+    return '';
+  }, [destination]);
+
   let hostname = '';
   try {
-    hostname = new URL(destination).hostname;
+    if (safeDestination) {
+      hostname = new URL(safeDestination).hostname;
+    } else {
+      hostname = 'URL Tidak Aman / Tidak Valid';
+    }
   } catch {
-    hostname = destination;
+    hostname = 'URL Tidak Aman / Tidak Valid';
   }
 
   const handleProceed = () => {
-    // Open in new tab safely
-    window.open(destination, '_blank', 'noopener,noreferrer');
+    if (!safeDestination) return;
+    window.open(safeDestination, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -85,7 +101,12 @@ export const WarningView: React.FC<WarningViewProps> = ({
 
         <button
           onClick={handleProceed}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          disabled={!safeDestination}
+          className={`w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-300 transition-colors ${
+            !safeDestination
+              ? 'opacity-40 cursor-not-allowed'
+              : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+          }`}
         >
           <span>Tetap Lanjutkan (Berisiko)</span>
           <ExternalLink className="w-3.5 h-3.5" />

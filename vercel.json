@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!assets/|favicon\\.svg|app-icon\\.jpg|.*\\.[a-zA-Z0-9]+).*)",
+      "destination": "/api"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Trash2, X, AlertCircle } from 'lucide-react';
 import { LinkRecord } from '../types';
+import { haptic } from '../utils/haptics';
 
 interface DeleteModalProps {
   link: LinkRecord;
@@ -19,15 +20,23 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      haptic.warning();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setErrorMessage(null);
+    haptic.heavy();
     try {
       await onConfirm(deleteOnServer);
       onClose();
     } catch (err: any) {
+      haptic.error();
       setErrorMessage(err?.message || 'Failed to complete deletion on server. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -45,7 +54,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
       {/* Container: Bottom-sheet on mobile, centered glass modal on desktop */}
       <div
         id="delete-modal-container"
-        className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-9 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl transition-all sm:scale-100 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+        className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl transition-all sm:scale-100 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95"
       >
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-semibold">

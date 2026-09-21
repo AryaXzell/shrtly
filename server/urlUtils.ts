@@ -8,9 +8,6 @@ export const RESERVED_WORDS = new Set([
   'warning',
   'report',
   'health',
-  'favicon.ico',
-  'robots.txt',
-  'sitemap.xml',
   'login',
   'signup',
   'admin',
@@ -20,9 +17,16 @@ export const RESERVED_WORDS = new Set([
   'export',
   'null',
   'undefined',
+  'src',
+  'node_modules',
+  'public',
+  'index',
+  'manifest',
+  'static',
+  'app',
 ]);
 
-const PRIVATE_IP_REGEX = /^(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0|169\.254\.\d{1,3}\.\d{1,3})$/;
+const PRIVATE_IP_REGEX = /^(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0|169\.254\.\d{1,3}\.\d{1,3}|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3})$/;
 
 const SUSPICIOUS_DOMAINS = new Set([
   'grabify.link',
@@ -78,22 +82,44 @@ export function validateAndNormalizeUrl(rawInput: string): URLValidationResult {
     return { isValid: false, error: 'Only http and https protocols are supported' };
   }
 
-  const hostname = parsed.hostname.toLowerCase();
-  if (!hostname || hostname.length === 0) {
+  let rawHostname = parsed.hostname.toLowerCase();
+  // Strip trailing dot (e.g. localhost. or example.com.)
+  if (rawHostname.endsWith('.')) {
+    rawHostname = rawHostname.slice(0, -1);
+  }
+  // Strip IPv6 square brackets if present
+  const unbracketed = rawHostname.startsWith('[') && rawHostname.endsWith(']')
+    ? rawHostname.slice(1, -1)
+    : rawHostname;
+
+  if (!rawHostname || rawHostname.length === 0) {
     return { isValid: false, error: 'Invalid hostname' };
   }
 
-  // SSRF prevention: reject localhost, 0.0.0.0, private IPs, link-local IPs
+  // SSRF prevention: reject localhost, IPv6 loopbacks, IPv4-mapped addresses, private IPs, link-local IPs
+  const isIpv6LoopbackOrLocal =
+    unbracketed === '::1' ||
+    unbracketed === '::' ||
+    unbracketed.startsWith('::ffff:127.') ||
+    unbracketed.startsWith('::ffff:7f') ||
+    unbracketed.startsWith('fc') ||
+    unbracketed.startsWith('fd') ||
+    unbracketed.startsWith('fe80:');
+
   if (
-    hostname === 'localhost' ||
-    hostname.endsWith('.localhost') ||
-    PRIVATE_IP_REGEX.test(hostname)
+    rawHostname === 'localhost' ||
+    rawHostname.endsWith('.localhost') ||
+    PRIVATE_IP_REGEX.test(rawHostname) ||
+    PRIVATE_IP_REGEX.test(unbracketed) ||
+    isIpv6LoopbackOrLocal
   ) {
     return {
       isValid: false,
       error: 'Destination points to a restricted local or private network address',
     };
   }
+
+  const hostname = rawHostname;
 
   // Check suspicious domains / heuristics
   let isSuspicious = false;
