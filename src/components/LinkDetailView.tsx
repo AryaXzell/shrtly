@@ -11,6 +11,8 @@ import {
   Check,
   ArrowUpRight,
   TrendingUp,
+  Filter,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -62,8 +64,11 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [timeRange, setTimeRange] = useState<'7d' | '14d' | '30d'>('30d');
+  const [timeRange, setTimeRange] = useState<'today' | '7d' | '14d' | '30d' | 'custom'>('30d');
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
+  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   const shortUrl = `${origin}/${link.code}`;
 
@@ -74,7 +79,12 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
       setError(null);
       try {
         const data = await getLinkAnalytics(link.internal_id, link.code);
-        if (isMounted) setAnalytics(data);
+        if (isMounted) {
+          setAnalytics(data);
+          if (data?.devices) {
+            setSelectedDevices(data.devices.map(d => d.device));
+          }
+        }
       } catch (err: any) {
         if (isMounted) setError(err?.message || 'Gagal memuat analitik.');
       } finally {
@@ -94,24 +104,51 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const selectedDevicesRatio = useMemo(() => {
+    if (!analytics?.devices || analytics.devices.length === 0) return 1;
+    const total = analytics.devices.reduce((sum, d) => sum + d.count, 0);
+    if (total === 0) return 1;
+    const filtered = analytics.devices
+      .filter(d => selectedDevices.includes(d.device))
+      .reduce((sum, d) => sum + d.count, 0);
+    return filtered / total;
+  }, [analytics, selectedDevices]);
+
   // Prepare chart data based on selected time range (default 30 days)
   const chartData = useMemo(() => {
     if (!analytics?.clicks_by_date || analytics.clicks_by_date.length === 0) return [];
 
-    const fullHistory = analytics.clicks_by_date;
-    const sliceCount = timeRange === '7d' ? 7 : timeRange === '14d' ? 14 : 30;
-    const sliced = fullHistory.slice(-sliceCount);
+    let filtered = [...analytics.clicks_by_date];
 
-    return sliced.map((item) => {
+    if (timeRange === '7d') {
+      filtered = filtered.slice(-7);
+    } else if (timeRange === '14d') {
+      filtered = filtered.slice(-14);
+    } else if (timeRange === '30d') {
+      filtered = filtered.slice(-30);
+    } else if (timeRange === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      filtered = filtered.filter(item => item.date === todayStr);
+      if (filtered.length === 0) {
+        filtered = [analytics.clicks_by_date[analytics.clicks_by_date.length - 1]];
+      }
+    } else if (timeRange === 'custom' && customStartDate && customEndDate) {
+      filtered = filtered.filter(item => {
+        return item.date >= customStartDate && item.date <= customEndDate;
+      });
+    }
+
+    return filtered.map((item) => {
       const d = new Date(item.date);
+      const adjustedClicks = Math.round(item.clicks * selectedDevicesRatio);
       return {
         date: item.date,
         dayLabel: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
         shortDate: d.toLocaleDateString('id-ID', { day: 'numeric' }),
-        clicks: item.clicks,
+        clicks: adjustedClicks,
       };
     });
-  }, [analytics, timeRange]);
+  }, [analytics, timeRange, customStartDate, customEndDate, selectedDevicesRatio]);
 
   // Statistics for selected range
   const rangeStats = useMemo(() => {
@@ -230,72 +267,214 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
         </div>
       ) : (
         <>
+          {/* Controls & Visibility Filters Panel */}
+          <div className="p-5 rounded-3xl bg-neutral-50 dark:bg-neutral-900/40 border border-neutral-200/80 dark:border-neutral-800 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  Filter & Visibilitas Data
+                </h3>
+              </div>
+              {selectedDevicesRatio < 1 || timeRange === 'custom' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic.selection();
+                    if (analytics?.devices) {
+                      setSelectedDevices(analytics.devices.map(d => d.device));
+                    }
+                    setTimeRange('30d');
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                  }}
+                  className="text-xs font-semibold text-rose-500 dark:text-rose-400 hover:underline cursor-pointer"
+                >
+                  Reset Filter
+                </button>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Device Visibility */}
+              <div className="space-y-2">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  Saring Perangkat
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {analytics.devices.map((item) => {
+                    const isSelected = selectedDevices.includes(item.device);
+                    return (
+                      <button
+                        key={item.device}
+                        type="button"
+                        onClick={() => {
+                          haptic.selection();
+                          if (isSelected) {
+                            if (selectedDevices.length > 1) {
+                              setSelectedDevices(selectedDevices.filter(d => d !== item.device));
+                            } else {
+                              setSelectedDevices(analytics.devices.map(d => d.device));
+                            }
+                          } else {
+                            setSelectedDevices([...selectedDevices, item.device]);
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-transparent shadow-xs font-semibold'
+                            : 'bg-white dark:bg-neutral-850 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        }`}
+                      >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>{item.device}</span>
+                        <span className="opacity-60 text-[10px] font-mono">({item.count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Date Filters */}
+              <div className="space-y-2">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  Rentang Waktu
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      { key: 'today', label: 'Hari Ini' },
+                      { key: '7d', label: '7 Hari' },
+                      { key: '14d', label: '14 Hari' },
+                      { key: '30d', label: '30 Hari' },
+                      { key: 'custom', label: 'Kustom' },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => {
+                        haptic.selection();
+                        setTimeRange(tab.key);
+                        if (tab.key === 'custom' && !customStartDate && !customEndDate) {
+                          const end = new Date().toISOString().split('T')[0];
+                          const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                          setCustomStartDate(start);
+                          setCustomEndDate(end);
+                        }
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
+                        timeRange === tab.key
+                          ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-transparent shadow-xs font-semibold'
+                          : 'bg-white dark:bg-neutral-850 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100/50'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {timeRange === 'custom' && (
+                  <div className="grid grid-cols-2 gap-2 pt-2 animate-in slide-in-from-top-2 duration-200">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 mb-1">
+                        Tanggal Mulai
+                      </label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => {
+                          setCustomStartDate(e.target.value);
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-850 bg-white dark:bg-neutral-900 text-xs text-neutral-900 dark:text-neutral-100 outline-hidden focus:border-neutral-400 dark:focus:border-neutral-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 mb-1">
+                        Tanggal Selesai
+                      </label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => {
+                          setCustomEndDate(e.target.value);
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-850 bg-white dark:bg-neutral-900 text-xs text-neutral-900 dark:text-neutral-100 outline-hidden focus:border-neutral-400 dark:focus:border-neutral-700"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {selectedDevicesRatio < 1 && (
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] flex items-center gap-2 border border-amber-500/15">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Visualisasi grafik disesuaikan berdasarkan filter perangkat:{' '}
+                  <strong>{selectedDevices.join(', ')}</strong>.
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* Key Metrics Bento */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800">
               <div className="text-[11px] text-neutral-500 font-medium">Total Klik</div>
               <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mt-1">
-                {analytics.total_clicks}
+                {Math.round(analytics.total_clicks * selectedDevicesRatio)}
               </div>
+              {selectedDevicesRatio < 1 && (
+                <span className="text-[9px] text-amber-500 font-medium">Terfilter</span>
+              )}
             </div>
             <div className="p-4 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800">
               <div className="text-[11px] text-neutral-500 font-medium">Hari Ini</div>
               <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mt-1">
-                {analytics.today_clicks}
+                {Math.round(analytics.today_clicks * selectedDevicesRatio)}
               </div>
+              {selectedDevicesRatio < 1 && (
+                <span className="text-[9px] text-amber-500 font-medium">Terfilter</span>
+              )}
             </div>
             <div className="p-4 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800">
               <div className="text-[11px] text-neutral-500 font-medium">7 Hari Terakhir</div>
               <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mt-1">
-                {analytics.last_7_days_clicks}
+                {Math.round(analytics.last_7_days_clicks * selectedDevicesRatio)}
               </div>
+              {selectedDevicesRatio < 1 && (
+                <span className="text-[9px] text-amber-500 font-medium">Terfilter</span>
+              )}
             </div>
             <div className="p-4 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800">
               <div className="text-[11px] text-neutral-500 font-medium">30 Hari Terakhir</div>
               <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mt-1">
-                {analytics.last_30_days_clicks}
+                {Math.round(analytics.last_30_days_clicks * selectedDevicesRatio)}
               </div>
+              {selectedDevicesRatio < 1 && (
+                <span className="text-[9px] text-amber-500 font-medium">Terfilter</span>
+              )}
             </div>
           </div>
 
-          {/* Recharts Bar Chart: Click Count History over the last 30 days */}
+          {/* Recharts Bar Chart: Click Count History over selected range */}
           <div className="p-5 sm:p-6 rounded-3xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-                  <span>Riwayat Klik (30 Hari Terakhir)</span>
+                  <span>
+                    {timeRange === '7d' && 'Riwayat Klik (7 Hari Terakhir)'}
+                    {timeRange === '14d' && 'Riwayat Klik (14 Hari Terakhir)'}
+                    {timeRange === '30d' && 'Riwayat Klik (30 Hari Terakhir)'}
+                    {timeRange === 'today' && 'Riwayat Klik (Hari Ini)'}
+                    {timeRange === 'custom' && `Riwayat Klik (Rentang Kustom)`}
+                  </span>
                 </h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Visualisasi performa dan tren klik harian
+                  Visualisasi performa dan tren klik harian sesuai rentang waktu aktif
                 </p>
-              </div>
-
-              {/* Time Range Selector */}
-              <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl shrink-0 self-start sm:self-auto">
-                {(
-                  [
-                    { key: '7d', label: '7 Hari' },
-                    { key: '14d', label: '14 Hari' },
-                    { key: '30d', label: '30 Hari' },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => {
-                      haptic.selection();
-                      setTimeRange(tab.key);
-                    }}
-                    className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all cursor-pointer ${
-                      timeRange === tab.key
-                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-xs font-semibold'
-                        : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -410,19 +589,45 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
 
             {/* Devices */}
             <div className="p-4 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800 space-y-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-100">
-                <Smartphone className="w-3.5 h-3.5 text-neutral-400" />
-                <span>Perangkat</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                  <Smartphone className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>Perangkat</span>
+                </div>
+                <span className="text-[9px] text-neutral-400 font-medium">Klik untuk filter</span>
               </div>
               <div className="space-y-1.5">
-                {analytics.devices.slice(0, 4).map((d) => (
-                  <div key={d.device} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-neutral-600 dark:text-neutral-400 truncate min-w-0 flex-1">{d.device}</span>
-                    <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium shrink-0">
-                      {d.count}
-                    </span>
-                  </div>
-                ))}
+                {analytics.devices.slice(0, 4).map((d) => {
+                  const isFilteredOut = !selectedDevices.includes(d.device);
+                  return (
+                    <div
+                      key={d.device}
+                      onClick={() => {
+                        haptic.selection();
+                        if (isFilteredOut) {
+                          setSelectedDevices([...selectedDevices, d.device]);
+                        } else {
+                          if (selectedDevices.length > 1) {
+                            setSelectedDevices(selectedDevices.filter(item => item !== d.device));
+                          } else {
+                            setSelectedDevices(analytics.devices.map(item => item.device));
+                          }
+                        }
+                      }}
+                      className={`flex items-center justify-between gap-2 text-xs p-1.5 rounded-xl transition-all cursor-pointer ${
+                        isFilteredOut
+                          ? 'opacity-30 line-through grayscale bg-neutral-100/50 dark:bg-neutral-800/20'
+                          : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/50'
+                      }`}
+                      title={isFilteredOut ? 'Aktifkan visibilitas' : 'Matikan visibilitas'}
+                    >
+                      <span className="text-neutral-600 dark:text-neutral-400 truncate min-w-0 flex-1">{d.device}</span>
+                      <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium shrink-0">
+                        {d.count}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

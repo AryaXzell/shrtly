@@ -27,9 +27,11 @@ SHRTLY is a fast, quiet, and privacy-conscious URL shortener. It offers an unclu
 - **Anonymous Ownership:** Manage, edit, or delete your short links using browser-stored cryptographic tokens without creating a user account.
 - **Permanent Code Tombstones:** Deleted codes are permanently reserved to prevent link impersonation, typosquatting, or security hijacking.
 - **Progressive Disclosure:** Simple one-click shortening by default, with advanced settings (custom alias, custom expiration) available on demand.
-- **Privacy-Respecting Analytics:** Tracks total clicks, daily trends, referrer sources, device categories, and top countries with zero IP storage or user profiling.
+- **Privacy-Respecting Analytics & Filtering:** Tracks total clicks, daily trends, referrer sources, device categories, and top countries with zero IP storage. Includes a **multi-dimensional filtering system** to toggle visibility by device type (dynamically scaling charts) and filter history using presets or **custom date range pickers**.
+- **Touch-Safe Mobile Layouts:** Fully responsive mobile dashboard featuring a persistent sliding bottom sheet with click-outside protection to ensure actions trigger smoothly on mobile viewports.
+- **Status Toggle Safety Modal:** Double-confirmation modal engine using high-contrast amber/emerald indicators and haptic feedback to prevent accidental link enabling or disabling.
 - **Security Scanner:** Automatically screens URLs against high-risk patterns and malicious destination indicators, presenting an interstitial warning before routing visitors.
-- **QR Code Generator:** Downloadable vector-ready QR codes for offline and mobile sharing.
+- **QR Code Generator:** Downloadable vector-ready QR codes for offline and mobile sharing with responsive overlay layouts.
 - **Abuse Reporting:** Built-in community flagging workflow for malicious or phishing links.
 - **Dual-Engine Persistence:** Native support for Upstash Redis with automatic fallback and self-healing local storage.
 
