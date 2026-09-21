@@ -50,6 +50,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileSheetRef = useRef<HTMLDivElement>(null);
 
   const isControlled = typeof isMenuOpen === 'boolean';
   const isOpen = isControlled ? isMenuOpen : internalMenuOpen;
@@ -85,7 +86,11 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
     }
 
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const isInsideDesktopMenu = menuRef.current?.contains(target);
+      const isInsideMobileSheet = mobileSheetRef.current?.contains(target);
+
+      if (!isInsideDesktopMenu && !isInsideMobileSheet) {
         closeMenu();
       }
     };
@@ -365,6 +370,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
             aria-modal="true"
           >
             <motion.div
+              ref={mobileSheetRef}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}

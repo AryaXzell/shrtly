@@ -63,11 +63,91 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
     });
   }, [url, userLinks]);
 
+  // Real-time URL format and security validation
+  const validation = useMemo(() => {
+    if (!url.trim()) return { isValid: true };
+    const trimmed = url.trim();
+
+    // 1. Length check
+    if (trimmed.length > 2048) {
+      return { isValid: false, error: 'URL terlalu panjang (maksimal 2048 karakter).' };
+    }
+
+    const lower = trimmed.toLowerCase();
+
+    // 2. Suspicious scripting/protocol check
+    if (/<script|javascript:|data:|vbscript:|<|>|iframe|onload|onerror|alert\(/i.test(lower)) {
+      return { isValid: false, error: 'Karakter atau skrip berbahaya (XSS) terdeteksi!' };
+    }
+
+    // 3. Suspicious SQL/command injections check
+    if (/(\s+or\s+[\d'=]+)|(\s+and\s+[\d'=]+)|union\s+select|select\s+.*\s+from|insert\s+into|drop\s+table/i.test(lower)) {
+      return { isValid: false, error: 'Pola SQL injection berbahaya terdeteksi!' };
+    }
+
+    // 4. Other unsafe characters inside standard domain
+    if (/[\\`]/.test(trimmed)) {
+      return { isValid: false, error: 'Karakter tidak aman terdeteksi.' };
+    }
+
+    // 5. Basic URL and format check
+    let hasProtocol = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed);
+    let checkString = trimmed;
+    if (!hasProtocol) {
+      checkString = 'https://' + trimmed;
+    }
+
+    try {
+      const parsed = new URL(checkString);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { isValid: false, error: 'Hanya protokol http dan https yang didukung.' };
+      }
+
+      const hostname = parsed.hostname;
+      if (!hostname || !hostname.includes('.')) {
+        return { isValid: false, error: 'Format nama host/domain tidak valid.' };
+      }
+
+      // 6. Suspicious deceptive tracking check
+      const SUSPICIOUS_DOMAINS = ['grabify.link', 'iplogger.org', 'blasze.com', '2no.co', 'yip.su', 'psportable.org'];
+      if (SUSPICIOUS_DOMAINS.some(d => hostname.toLowerCase().includes(d))) {
+        return { isValid: true, isWarning: true, error: 'Peringatan: Domain ini terkait dengan pelacak/IP Logger.' };
+      }
+
+      // 7. Local address prevention
+      const localhostPatterns = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '[::]'];
+      if (localhostPatterns.some(p => hostname.toLowerCase().includes(p))) {
+        return { isValid: false, error: 'Tujuan mengarah ke alamat jaringan lokal yang dilarang.' };
+      }
+
+    } catch (e) {
+      return { isValid: false, error: 'Format URL tidak valid.' };
+    }
+
+    return { isValid: true };
+  }, [url]);
+
+  const activeError = useMemo(() => {
+    if (inlineError) return { message: inlineError, type: 'error' };
+    if (!validation.isValid && validation.error) {
+      return { message: validation.error, type: 'error' };
+    }
+    if (validation.isWarning && validation.error) {
+      return { message: validation.error, type: 'warning' };
+    }
+    return null;
+  }, [inlineError, validation]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) {
       haptic.warning();
       setInlineError('Silakan tempel URL terlebih dahulu.');
+      return;
+    }
+
+    if (!validation.isValid) {
+      haptic.warning();
       return;
     }
 
@@ -147,11 +227,11 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                 </kbd>
               </div>
             )}
-            <motion.button
+             <motion.button
               whileTap={{ scale: 0.96 }}
               id="shorten-submit-btn"
               type="submit"
-              disabled={isSubmitting || !url.trim()}
+              disabled={isSubmitting || !url.trim() || !validation.isValid}
               className="px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none transition-opacity shrink-0 cursor-pointer"
             >
               {isSubmitting ? 'Shortening...' : 'Shorten'}
@@ -159,17 +239,21 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Inline Error Notice */}
+        {/* Inline Error/Warning Notice */}
         <AnimatePresence>
-          {inlineError && (
+          {activeError && (
             <motion.div
               initial={{ opacity: 0, y: -6, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: -6, height: 0 }}
-              className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center gap-2.5 text-xs text-rose-700 dark:text-rose-300 text-left overflow-hidden"
+              className={`p-3 rounded-2xl border flex items-center gap-2.5 text-xs text-left overflow-hidden ${
+                activeError.type === 'warning'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-300'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300'
+              }`}
             >
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{inlineError}</span>
+              <span>{activeError.message}</span>
             </motion.div>
           )}
         </AnimatePresence>

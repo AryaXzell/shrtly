@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { motion } from 'motion/react';
 import { LinkRecord } from '../types';
 import { haptic } from '../utils/haptics';
 
@@ -44,16 +45,26 @@ export const BulkDeleteModal: React.FC<BulkDeleteModalProps> = ({
   };
 
   return (
-    <div
+    <motion.div
       id="bulk-delete-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="bulk-delete-dialog-title"
     >
-      <div
+      <motion.div
         id="bulk-delete-modal-container"
-        className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-semibold">
@@ -142,7 +153,7 @@ export const BulkDeleteModal: React.FC<BulkDeleteModalProps> = ({
             <span>{isSubmitting ? 'Menghapus...' : `Hapus ${selectedLinks.length} Tautan`}</span>
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

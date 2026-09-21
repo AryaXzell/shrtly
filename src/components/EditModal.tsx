@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle, X, Check, Globe } from 'lucide-react';
+import { motion } from 'motion/react';
 import { LinkRecord } from '../types';
 
 interface EditModalProps {
@@ -41,15 +42,25 @@ export const EditModal: React.FC<EditModalProps> = ({ link, isOpen, onClose, onS
   };
 
   return (
-    <div
+    <motion.div
       id="edit-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
     >
-      <div
+      <motion.div
         id="edit-modal-container"
-        className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-left max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95"
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-left max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
           <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
@@ -137,7 +148,7 @@ export const EditModal: React.FC<EditModalProps> = ({ link, isOpen, onClose, onS
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

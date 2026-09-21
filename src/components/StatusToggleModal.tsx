@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Trash2, X, AlertCircle } from 'lucide-react';
+import { Power, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { LinkRecord } from '../types';
 import { haptic } from '../utils/haptics';
 
-interface DeleteModalProps {
+interface StatusToggleModalProps {
   link: LinkRecord;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (permanent: boolean) => Promise<void>;
+  onConfirm: () => Promise<void>;
 }
 
-export const DeleteModal: React.FC<DeleteModalProps> = ({
+export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
   link,
   isOpen,
   onClose,
   onConfirm,
 }) => {
-  const [deleteOnServer, setDeleteOnServer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isDeactivating = link.status === 'active';
 
   useEffect(() => {
     if (isOpen) {
@@ -34,11 +34,11 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
     setErrorMessage(null);
     haptic.heavy();
     try {
-      await onConfirm(deleteOnServer);
+      await onConfirm();
       onClose();
     } catch (err: any) {
       haptic.error();
-      setErrorMessage(err?.message || 'Failed to complete deletion on server. Please try again.');
+      setErrorMessage(err?.message || 'Gagal mengubah status tautan. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -46,7 +46,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
 
   return (
     <motion.div
-      id="delete-modal-backdrop"
+      id="status-toggle-modal-backdrop"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -55,11 +55,10 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="delete-dialog-title"
+      aria-labelledby="status-toggle-dialog-title"
     >
-      {/* Container: Bottom-sheet on mobile, centered glass modal on desktop */}
       <motion.div
-        id="delete-modal-container"
+        id="status-toggle-modal-container"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -68,10 +67,12 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
         className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-semibold">
-            <AlertTriangle className="w-5 h-5" />
-            <h2 id="delete-dialog-title" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              Hapus tautan ini?
+          <div className="flex items-center gap-2.5 font-semibold">
+            <div className={`p-1.5 rounded-xl ${isDeactivating ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+              <Power className="w-4 h-4" />
+            </div>
+            <h2 id="status-toggle-dialog-title" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+              {isDeactivating ? 'Nonaktifkan tautan?' : 'Aktifkan tautan kembali?'}
             </h2>
           </div>
           <button
@@ -86,48 +87,38 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
 
         <div className="py-4 space-y-4">
           <div className="p-3.5 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/60 text-xs text-neutral-600 dark:text-neutral-300 break-all space-y-1">
-            <div className="font-mono font-medium text-neutral-900 dark:text-neutral-100">
-              /{link.code}
+            <div className="flex items-center justify-between">
+              <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100 text-sm">
+                /{link.code}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                link.status === 'active'
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-neutral-500/15 text-neutral-600 dark:text-neutral-400 border border-neutral-500/20'
+              }`}>
+                {link.status === 'active' ? 'Aktif' : 'Nonaktif'}
+              </span>
             </div>
-            <div className="truncate text-neutral-500 dark:text-neutral-400 text-[11px]">
+            <div className="truncate text-neutral-500 dark:text-neutral-400 text-[11px] pt-1">
               {link.destination}
             </div>
           </div>
 
           <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            Tindakan ini akan menonaktifkan pengalihan tautan publik. Kode unik{' '}
-            <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">
-              {link.code}
-            </span>{' '}
-            tetap direservasi permanen (tombstone) dan tidak akan pernah digunakan kembali.
+            {isDeactivating ? (
+              <span>
+                Menonaktifkan tautan akan menghentikan pengalihan pengunjung ke URL tujuan. Pengunjung yang mengakses{' '}
+                <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">/{link.code}</span>{' '}
+                akan melihat halaman informasi status nonaktif. Anda dapat mengaktifkannya kembali kapan saja.
+              </span>
+            ) : (
+              <span>
+                Mengaktifkan kembali tautan akan memulihkan fungsi pengalihan secara instan. Pengunjung yang mengakses{' '}
+                <span className="font-mono font-medium text-neutral-900 dark:text-neutral-100">/{link.code}</span>{' '}
+                akan langsung diarahkan ke tujuan aslinya.
+              </span>
+            )}
           </p>
-
-          {/* Toggle: Hapus juga di sisi server? */}
-          <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
-            <label
-              htmlFor="server-delete-toggle"
-              className="flex items-start justify-between gap-3 cursor-pointer select-none"
-            >
-              <div className="space-y-0.5">
-                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  Hapus juga di sisi server?
-                </span>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                  {deleteOnServer
-                    ? 'Data tautan dan riwayat analitik akan dihapus permanen dari server. Tidak bisa di-undo.'
-                    : 'Hanya sembunyikan dari daftar kelola Anda. Tautan tetap mati dan kode ter-tombstone.'}
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                id="server-delete-toggle"
-                checked={deleteOnServer}
-                onChange={(e) => setDeleteOnServer(e.target.checked)}
-                disabled={isSubmitting}
-                className="mt-1 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 dark:bg-neutral-800 dark:border-neutral-700"
-              />
-            </label>
-          </div>
 
           {errorMessage && (
             <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300">
@@ -142,7 +133,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-full text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="px-4 py-2 rounded-full text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
           >
             Batal
           </button>
@@ -150,14 +141,24 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-transform active:scale-95 shadow-sm ${
-              deleteOnServer
-                ? 'bg-rose-600 hover:bg-rose-700'
-                : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200'
+            className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-semibold text-white transition-transform active:scale-95 shadow-sm cursor-pointer ${
+              isDeactivating
+                ? 'bg-amber-500 hover:bg-amber-600'
+                : 'bg-emerald-600 hover:bg-emerald-700'
             }`}
           >
-            <Trash2 className="w-4 h-4" />
-            <span>{isSubmitting ? 'Menghapus...' : deleteOnServer ? 'Hapus Permanen' : 'Hapus'}</span>
+            {isDeactivating ? (
+              <Power className="w-3.5 h-3.5" />
+            ) : (
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {isSubmitting
+                ? 'Menyimpan...'
+                : isDeactivating
+                ? 'Nonaktifkan'
+                : 'Aktifkan'}
+            </span>
           </button>
         </div>
       </motion.div>

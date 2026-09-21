@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { X, Download, Copy, Check } from 'lucide-react';
+import { motion } from 'motion/react';
 
 interface QRModalProps {
   shortUrl: string;
@@ -61,15 +62,25 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
   };
 
   return (
-    <div
+    <motion.div
       id="qr-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
     >
-      <div
+      <motion.div
         id="qr-modal-container"
-        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center animate-in fade-in zoom-in-95 duration-200"
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center"
       >
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
@@ -118,7 +129,7 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
             <span>Unduh PNG</span>
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

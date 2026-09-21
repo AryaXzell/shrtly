@@ -121,10 +121,10 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
         {children}
       </main>
 
-      {/* Mobile Bottom Navigation Bar (Touch targets >= 44px) */}
+      {/* Mobile Bottom Navigation Bar (Floating Pill Capsule iOS-Style) */}
       <nav
         id="mobile-bottom-nav"
-        className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-200/80 dark:border-neutral-800/80 px-4 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-lg shadow-black/5"
+        className="sm:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-fit z-40 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl border border-neutral-200/80 dark:border-neutral-800/80 p-1 rounded-full flex items-center gap-1 shadow-xl shadow-neutral-950/10 dark:shadow-black/50"
         aria-label="Navigasi Bawah Seluler"
         role="tablist"
       >
@@ -133,7 +133,7 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
           role="tab"
           aria-selected={activeTab === 'home'}
           onClick={() => handleTabChange('home')}
-          className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 rounded-2xl transition-all cursor-pointer active:scale-95 ${
+          className={`relative flex flex-col items-center justify-center px-4.5 py-2 min-h-[38px] min-w-[72px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
             activeTab === 'home'
               ? 'text-neutral-950 dark:text-white font-semibold'
               : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
@@ -143,11 +143,11 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
             <motion.div
               layoutId="mobile-active-nav-bubble"
               transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-2xl bg-neutral-100 dark:bg-neutral-900 -z-10"
+              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
             />
           )}
-          <Link2 className="w-5 h-5" />
-          <span className="text-[10px] tracking-tight">Shorten</span>
+          <Link2 className="w-4 h-4" />
+          <span className="text-[9px] tracking-tight">Shorten</span>
         </button>
 
         <button
@@ -155,7 +155,7 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
           role="tab"
           aria-selected={activeTab === 'links'}
           onClick={() => handleTabChange('links')}
-          className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 rounded-2xl transition-all cursor-pointer active:scale-95 ${
+          className={`relative flex flex-col items-center justify-center px-4.5 py-2 min-h-[38px] min-w-[72px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
             activeTab === 'links'
               ? 'text-neutral-950 dark:text-white font-semibold'
               : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
@@ -165,13 +165,13 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
             <motion.div
               layoutId="mobile-active-nav-bubble"
               transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-2xl bg-neutral-100 dark:bg-neutral-900 -z-10"
+              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
             />
           )}
-          <List className="w-5 h-5" />
-          <span className="text-[10px] tracking-tight">My Links</span>
+          <List className="w-4 h-4" />
+          <span className="text-[9px] tracking-tight">My Links</span>
           {linksCount > 0 && (
-            <span className="absolute top-1 right-3 px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-neutral-900 text-white dark:bg-white dark:text-neutral-900">
+            <span className="absolute top-1 right-2 px-1 rounded-full text-[8px] font-mono font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900">
               {linksCount}
             </span>
           )}
@@ -182,7 +182,7 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
           role="tab"
           aria-selected={activeTab === 'settings'}
           onClick={() => handleTabChange('settings')}
-          className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-1 rounded-2xl transition-all cursor-pointer active:scale-95 ${
+          className={`relative flex flex-col items-center justify-center px-4.5 py-2 min-h-[38px] min-w-[72px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
             activeTab === 'settings'
               ? 'text-neutral-950 dark:text-white font-semibold'
               : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
@@ -192,11 +192,11 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
             <motion.div
               layoutId="mobile-active-nav-bubble"
               transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-2xl bg-neutral-100 dark:bg-neutral-900 -z-10"
+              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
             />
           )}
-          <Settings className="w-5 h-5" />
-          <span className="text-[10px] tracking-tight">Settings</span>
+          <Settings className="w-4 h-4" />
+          <span className="text-[9px] tracking-tight">Settings</span>
         </button>
       </nav>
 

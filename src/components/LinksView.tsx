@@ -10,6 +10,7 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { LinkRecord } from '../types';
 import { LinkCard } from './LinkCard';
 import { EmptyState } from './EmptyState';
@@ -469,30 +470,32 @@ export const LinksView: React.FC<LinksViewProps> = ({
           />
         </div>
       ) : (
-        <div className="space-y-3 pb-12 sm:pb-4">
-          {filteredLinks.map((link) => (
-            <LinkCard
-              key={link.internal_id}
-              link={link}
-              origin={origin}
-              isSelectionMode={isSelectionMode}
-              isSelected={selectedIds.has(link.internal_id)}
-              onToggleSelect={handleToggleSelect}
-              isMenuOpen={activeMenuId === link.internal_id}
-              onToggleMenu={() =>
-                setActiveMenuId((prev) => (prev === link.internal_id ? null : link.internal_id))
-              }
-              onCloseMenu={() => {
-                setActiveMenuId((prev) => (prev === link.internal_id ? null : prev));
-              }}
-              onOpenAnalytics={onOpenAnalytics}
-              onOpenQR={onOpenQR}
-              onEditDestination={onEditDestination}
-              onToggleStatus={onToggleStatus}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+        <motion.div layout className="space-y-3 pb-12 sm:pb-4">
+          <AnimatePresence mode="popLayout">
+            {filteredLinks.map((link) => (
+              <LinkCard
+                key={link.internal_id}
+                link={link}
+                origin={origin}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedIds.has(link.internal_id)}
+                onToggleSelect={handleToggleSelect}
+                isMenuOpen={activeMenuId === link.internal_id}
+                onToggleMenu={() =>
+                  setActiveMenuId((prev) => (prev === link.internal_id ? null : link.internal_id))
+                }
+                onCloseMenu={() => {
+                  setActiveMenuId((prev) => (prev === link.internal_id ? null : prev));
+                }}
+                onOpenAnalytics={onOpenAnalytics}
+                onOpenQR={onOpenQR}
+                onEditDestination={onEditDestination}
+                onToggleStatus={onToggleStatus}
+                onDelete={onDelete}
+              />
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Bulk Delete Modal */}

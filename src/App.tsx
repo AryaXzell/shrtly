@@ -11,6 +11,7 @@ import { DeleteModal } from './components/DeleteModal';
 import { EditModal } from './components/EditModal';
 import { QRModal } from './components/QRModal';
 import { ReportModal } from './components/ReportModal';
+import { StatusToggleModal } from './components/StatusToggleModal';
 import { LinkRecord, HealthStatus } from './types';
 import {
   listOwnerLinks,
@@ -35,6 +36,7 @@ export default function App() {
   const [linkToDelete, setLinkToDelete] = useState<LinkRecord | null>(null);
   const [linkToEdit, setLinkToEdit] = useState<LinkRecord | null>(null);
   const [linkForQR, setLinkForQR] = useState<LinkRecord | null>(null);
+  const [linkToToggleStatus, setLinkToToggleStatus] = useState<LinkRecord | null>(null);
   const [codeForReport, setCodeForReport] = useState<string | null>(null);
 
   // Toast notification state
@@ -116,6 +118,7 @@ export default function App() {
         setLinkToDelete(null);
         setLinkToEdit(null);
         setLinkForQR(null);
+        setLinkToToggleStatus(null);
         setCodeForReport(null);
         setActiveTab('home');
 
@@ -161,7 +164,13 @@ export default function App() {
   };
 
   // Handler for Status Toggle (Active <-> Disabled)
-  const handleToggleStatus = async (link: LinkRecord) => {
+  const handleToggleStatus = (link: LinkRecord) => {
+    setLinkToToggleStatus(link);
+  };
+
+  const handleConfirmToggleStatus = async () => {
+    if (!linkToToggleStatus) return;
+    const link = linkToToggleStatus;
     const nextStatus = link.status === 'active' ? 'disabled' : 'active';
     try {
       const updated = await toggleLinkStatus(link.internal_id, nextStatus, link.code);
@@ -178,6 +187,7 @@ export default function App() {
       );
     } catch (err: any) {
       showToast(err?.message || 'Gagal mengubah status tautan.', 'error');
+      throw err;
     }
   };
 
@@ -347,41 +357,41 @@ export default function App() {
         {toast && (
           <motion.div
             key="shrtly-toast-capsule"
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -14, scale: 0.94 }}
+            initial={{ opacity: 0, y: -32, scale: 0.85, filter: 'blur(3px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -32, scale: 0.85, filter: 'blur(3px)' }}
             transition={{
               type: 'spring',
-              stiffness: 480,
-              damping: 30,
-              mass: 0.7,
+              stiffness: 450,
+              damping: 25,
+              mass: 0.6,
             }}
             id="shrtly-toast"
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full text-xs font-medium shadow-2xl backdrop-blur-2xl border select-none pointer-events-none"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center h-10 pl-3 pr-[18px] rounded-full shadow-[0_16px_36px_-4px_rgba(0,0,0,0.65),0_4px_12px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-2xl border select-none pointer-events-none gap-2.5"
             style={{
-              backgroundColor:
-                toast.type === 'success' ? 'rgba(17, 17, 19, 0.92)' : 'rgba(225, 29, 72, 0.94)',
-              color: '#ffffff',
+              backgroundColor: 'rgba(9, 9, 11, 0.98)',
               borderColor:
                 toast.type === 'success'
-                  ? 'rgba(255, 255, 255, 0.14)'
-                  : 'rgba(255, 255, 255, 0.22)',
-              boxShadow:
-                '0 12px 32px -4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08) inset',
+                  ? 'rgba(52, 199, 89, 0.28)'
+                  : 'rgba(255, 59, 48, 0.3)',
             }}
           >
             <div
-              className={`flex items-center justify-center w-5 h-5 rounded-full ${
-                toast.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/20 text-white'
+              className={`flex items-center justify-center w-[22px] h-[22px] rounded-full border transition-all duration-300 ${
+                toast.type === 'success'
+                  ? 'bg-emerald-500/15 text-[#34C759] border-emerald-500/25 shadow-[0_0_8px_rgba(52,199,89,0.15)]'
+                  : 'bg-rose-500/15 text-[#FF3B30] border-rose-500/25 shadow-[0_0_8px_rgba(255,59,48,0.15)]'
               }`}
             >
               {toast.type === 'success' ? (
-                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
               ) : (
-                <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+                <AlertCircle className="w-3.5 h-3.5 stroke-[3]" />
               )}
             </div>
-            <span className="tracking-tight text-[12.5px] font-medium">{toast.message}</span>
+            <span className="tracking-tight text-[13px] font-semibold text-white/95 whitespace-nowrap antialiased">
+              {toast.message}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -490,40 +500,56 @@ export default function App() {
       </div>
 
       {/* Global Modals */}
-      {linkToDelete && (
-        <DeleteModal
-          link={linkToDelete}
-          isOpen={true}
-          onClose={() => setLinkToDelete(null)}
-          onConfirm={handleConfirmDelete}
-        />
-      )}
+      <AnimatePresence>
+        {linkToDelete && (
+          <DeleteModal
+            key="delete-modal"
+            link={linkToDelete}
+            isOpen={true}
+            onClose={() => setLinkToDelete(null)}
+            onConfirm={handleConfirmDelete}
+          />
+        )}
 
-      {linkToEdit && (
-        <EditModal
-          link={linkToEdit}
-          isOpen={true}
-          onClose={() => setLinkToEdit(null)}
-          onSave={handleSaveDestination}
-        />
-      )}
+        {linkToEdit && (
+          <EditModal
+            key="edit-modal"
+            link={linkToEdit}
+            isOpen={true}
+            onClose={() => setLinkToEdit(null)}
+            onSave={handleSaveDestination}
+          />
+        )}
 
-      {linkForQR && (
-        <QRModal
-          shortUrl={`${origin}/${linkForQR.code}`}
-          code={linkForQR.code}
-          isOpen={true}
-          onClose={() => setLinkForQR(null)}
-        />
-      )}
+        {linkForQR && (
+          <QRModal
+            key="qr-modal"
+            shortUrl={`${origin}/${linkForQR.code}`}
+            code={linkForQR.code}
+            isOpen={true}
+            onClose={() => setLinkForQR(null)}
+          />
+        )}
 
-      {codeForReport && (
-        <ReportModal
-          code={codeForReport}
-          isOpen={true}
-          onClose={() => setCodeForReport(null)}
-        />
-      )}
+        {linkToToggleStatus && (
+          <StatusToggleModal
+            key="status-toggle-modal"
+            link={linkToToggleStatus}
+            isOpen={true}
+            onClose={() => setLinkToToggleStatus(null)}
+            onConfirm={handleConfirmToggleStatus}
+          />
+        )}
+
+        {codeForReport && (
+          <ReportModal
+            key="report-modal"
+            code={codeForReport}
+            isOpen={true}
+            onClose={() => setCodeForReport(null)}
+          />
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }

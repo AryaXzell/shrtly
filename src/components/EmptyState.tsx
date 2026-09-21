@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 
 interface EmptyStateProps {
   illustration: React.ReactNode;
@@ -18,23 +19,53 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
 }) => {
   return (
-    <div className="py-12 px-4 text-center max-w-sm mx-auto flex flex-col items-center">
-      <div className="mb-5">{illustration}</div>
-      <h3 className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 mb-1.5">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="py-12 px-4 text-center max-w-sm mx-auto flex flex-col items-center"
+    >
+      <motion.div
+        animate={{ y: [0, -6, 0] }}
+        transition={{
+          repeat: Infinity,
+          duration: 4,
+          ease: "easeInOut",
+        }}
+        className="mb-6 drop-shadow-xl"
+      >
+        {illustration}
+      </motion.div>
+      <motion.h3
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+        className="text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-2"
+      >
         {title}
-      </h3>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
+      </motion.h3>
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.4 }}
+        className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed max-w-xs"
+      >
         {description}
-      </p>
+      </motion.p>
       {action && (
-        <button
+        <motion.button
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
           onClick={action.onClick}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium text-sm transition-transform active:scale-95 shadow-sm hover:opacity-90"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold text-sm transition-shadow active:scale-95 shadow-md shadow-neutral-950/10 dark:shadow-neutral-500/5 hover:opacity-95 cursor-pointer"
         >
           {action.icon}
           <span>{action.label}</span>
-        </button>
+        </motion.button>
       )}
-    </div>
+    </motion.div>
   );
 };
