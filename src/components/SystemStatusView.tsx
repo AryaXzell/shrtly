@@ -101,15 +101,15 @@ export const SystemStatusView: React.FC<SystemStatusViewProps> = ({
           </p>
         </div>
 
-        <button
-          id="system-status-refresh-btn"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 active:scale-95 text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
+        <div
+          id="system-status-live-badge"
+          className="self-start sm:self-auto inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold select-none"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{isRefreshing ? 'Memeriksa...' : 'Perbarui Status'}</span>
-        </button>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 relative flex items-center justify-center">
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400 animate-ping" />
+          </span>
+          <span>Sistem Terupdate Otomatis (1s)</span>
+        </div>
       </div>
 
       {/* Main Overall Health Card */}

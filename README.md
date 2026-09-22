@@ -53,11 +53,15 @@ SHRTLY is a fast, quiet, and privacy-conscious URL shortener. It offers an unclu
 
 ```
 .
+├── api/
+│   └── index.ts           # Vercel Function entrypoint
 ├── server/
-│   └── storage.ts         # Dual-engine storage (Upstash Redis + Local JSON)
+│   ├── app.ts             # Core Express application and route handlers
+│   ├── storage.ts         # Dual-engine storage (Upstash Redis + Local JSON)
+│   ├── urlUtils.ts        # URL validation, normalization, and code generator
+│   └── runTests.ts        # Backend unit and integration test suite
 ├── src/
 │   ├── components/        # Modular UI components (Views, Modals, Empty States)
-│   │   ├── illustrations/ # Bespoke SVG illustrations suite
 │   │   ├── AppShell.tsx   # Responsive container & navigation layout
 │   │   ├── HomeView.tsx   # Shortening input & progressive options
 │   │   ├── LinksView.tsx  # Link management, search, and filtering
@@ -67,10 +71,13 @@ SHRTLY is a fast, quiet, and privacy-conscious URL shortener. It offers an unclu
 │   ├── types.ts           # Shared TypeScript interfaces and domain types
 │   ├── App.tsx            # Main application router and state coordinator
 │   └── main.tsx           # React entry point
-├── server.ts              # Express server, API routes, and 302 redirect engine
+├── server.ts              # Local development / standalone Express entrypoint
 ├── package.json           # Dependencies and build scripts
 └── vite.config.ts         # Vite and Tailwind configuration
 ```
+
+- **`api/index.ts`** is the production Vercel Function entrypoint used for deployments.
+- **`server.ts`** is the standalone Express entrypoint used for local development.
 
 ---
 

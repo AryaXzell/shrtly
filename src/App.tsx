@@ -68,13 +68,6 @@ export default function App() {
     try {
       const h = await checkHealth();
       setHealthStatus(h);
-      if (h.storage?.engine === 'upstash_redis' && h.storage?.connected) {
-        showToast(`Tersinkron: Upstash Redis terhubung (${h.storage.latency_ms ?? 0}ms)`);
-      } else if (h.storage?.engine === 'upstash_redis' && !h.storage?.connected) {
-        showToast('Koneksi Upstash bermasalah, dialihkan ke penyimpanan lokal aman.', 'error');
-      } else {
-        showToast('Tersinkron: Backend aktif dengan penyimpanan lokal.');
-      }
     } catch (err: any) {
       showToast('Gagal menyinkronkan status backend.', 'error');
     } finally {
@@ -188,6 +181,15 @@ export default function App() {
     checkHealth()
       .then((h) => setHealthStatus(h))
       .catch((e) => console.warn('Health check issue:', e));
+
+    // Auto-update health status (uptime and latency) every 1 second
+    const interval = setInterval(() => {
+      checkHealth()
+        .then((h) => setHealthStatus(h))
+        .catch((e) => console.warn('Auto health check failed:', e));
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [refreshLinks]);
 
   // Handler for link creation

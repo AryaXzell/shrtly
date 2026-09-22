@@ -1,4 +1,5 @@
 import { validateAndNormalizeUrl, validateCustomAlias } from './urlUtils';
+import app from '../api/index';
 
 interface TestResult {
   name: string;
@@ -71,6 +72,12 @@ test('validateCustomAlias - alias restrictions', () => {
 
   const r3 = validateCustomAlias('too_long_alias_with_more_than_thirty_characters_limit');
   assert(!r3.isValid, 'Long alias should be rejected');
+});
+
+test('production entrypoint - api/index exports valid express app', () => {
+  assert(typeof app === 'function', 'api/index should export an Express handler function');
+  assert(typeof (app as any).use === 'function', 'Express app must have middleware support');
+  assert(typeof (app as any).get === 'function', 'Express app must have GET route registration');
 });
 
 // -------------------------------------------------------------

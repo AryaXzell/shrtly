@@ -1,8 +1,6 @@
 {
-  "name": "react-example",
+  "name": "shrtly",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
@@ -13,7 +11,6 @@
     "test": "tsx server/runTests.ts"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/qrcode": "^1.5.6",
     "@upstash/redis": "^1.39.0",
