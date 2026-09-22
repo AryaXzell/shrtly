@@ -57,10 +57,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.4 }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={action.onClick}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold text-sm transition-shadow active:scale-95 shadow-md shadow-neutral-950/10 dark:shadow-neutral-500/5 hover:opacity-95 cursor-pointer"
+          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium text-xs sm:text-sm transition-all shadow-sm shadow-neutral-950/10 dark:shadow-neutral-500/5 hover:opacity-90 cursor-pointer whitespace-nowrap"
         >
           {action.icon}
           <span>{action.label}</span>

@@ -16,7 +16,7 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
   const [dataUrl, setDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
-  useModalA11y(isOpen, onClose, 'qr-modal-container');
+  useModalA11y(isOpen, onClose, 'qr-modal');
 
   useEffect(() => {
     if (isOpen && shortUrl) {
@@ -78,7 +78,7 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
       aria-labelledby="qr-modal-title"
     >
       <motion.div
-        id="qr-modal-container"
+        id="qr-modal"
         tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -100,10 +100,13 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
         </div>
 
         <div className="my-6 flex flex-col items-center justify-center">
-          <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm inline-block">
+          <div
+            id="qr-code-element"
+            className="p-4 bg-white rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-md shadow-neutral-900/5 dark:shadow-black/40 inline-block overflow-hidden"
+          >
             {svgString ? (
               <div
-                className="w-48 h-48 [&>svg]:w-full [&>svg]:h-full"
+                className="w-48 h-48 rounded-xl overflow-hidden [&>svg]:w-full [&>svg]:h-full"
                 dangerouslySetInnerHTML={{ __html: svgString }}
               />
             ) : (

@@ -442,14 +442,14 @@ export const LinksView: React.FC<LinksViewProps> = ({
           ))}
         </div>
       ) : links.length === 0 ? (
-        <div className="p-8 rounded-3xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800">
+        <div className="p-6 sm:p-8 rounded-3xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800">
           <EmptyState
-            illustration={<NoLinksIllustration size={110} />}
+            illustration={<NoLinksIllustration size={100} />}
             title="Belum ada tautan singkat"
             description="Tautan yang Anda persingkat dari peramban ini akan muncul di sini tanpa perlu login akun."
             action={{
               label: 'Perpendek Tautan Sekarang',
-              icon: <Plus className="w-4 h-4" />,
+              icon: <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />,
               onClick: onNavigateToHome,
             }}
           />

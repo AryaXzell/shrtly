@@ -100,16 +100,6 @@ export const SystemStatusView: React.FC<SystemStatusViewProps> = ({
             Metrik performa real-time, status server, diagnosa database, dan integritas peramban.
           </p>
         </div>
-
-        <div
-          id="system-status-live-badge"
-          className="self-start sm:self-auto inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold select-none"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 relative flex items-center justify-center">
-            <span className="absolute inline-flex h-full w-full rounded-full opacity-75 bg-emerald-400 animate-ping" />
-          </span>
-          <span>Sistem Terupdate Otomatis (1s)</span>
-        </div>
       </div>
 
       {/* Main Overall Health Card */}
@@ -166,60 +156,96 @@ export const SystemStatusView: React.FC<SystemStatusViewProps> = ({
       </div>
 
       {/* Database & Storage Engine Section */}
-      <div className="p-5 rounded-3xl bg-white/90 dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-neutral-800 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          <Database className="w-4 h-4 text-neutral-500" />
+      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-sm space-y-4">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-neutral-900 dark:text-neutral-100 pb-2 border-b border-neutral-100 dark:border-neutral-800/80">
+          <div className="p-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+            <Database className="w-4 h-4" />
+          </div>
           <span>Arsitektur Penyimpanan Database</span>
         </div>
 
-        <div className="space-y-2 text-xs divide-y divide-neutral-100 dark:divide-neutral-800/60">
-          <div className="flex items-center justify-between pb-2">
-            <span className="text-neutral-500">Mesin Utama (Primary Engine):</span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Engine Card */}
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex flex-col justify-between gap-2">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              Mesin Penyimpanan Utama
+            </span>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
                 healthStatus?.storage?.engine === 'upstash_redis' && healthStatus?.storage?.connected
-                  ? 'bg-emerald-500'
-                  : 'bg-blue-500'
+                  ? 'bg-emerald-500 ring-2 ring-emerald-500/20'
+                  : 'bg-blue-500 ring-2 ring-blue-500/20'
               }`} />
-              {healthStatus?.storage?.engine === 'upstash_redis'
-                ? 'Upstash Redis Cloud (In-Memory Cluster)'
-                : 'Local Persistent (JSON File Storage System)'}
-            </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                  {healthStatus?.storage?.engine === 'upstash_redis'
+                    ? 'Upstash Redis Cloud'
+                    : 'Penyimpanan Lokal (JSON)'}
+                </p>
+                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                  {healthStatus?.storage?.engine === 'upstash_redis'
+                    ? 'In-Memory Serverless Cluster'
+                    : 'File System Persistent'}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between py-2">
-            <span className="text-neutral-500">Status Konektivitas Redis/Database:</span>
-            <span className="font-semibold">
+          {/* Connectivity Status Card */}
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex flex-col justify-between gap-2">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              Status Konektivitas Engine
+            </span>
+            <div>
               {healthStatus?.storage?.connected ? (
-                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Synchronized & Active
-                </span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Synchronized & Active</span>
+                </div>
               ) : (
-                <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Fallback Mode (Penyimpanan Lokal Aktif)
-                </span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold whitespace-nowrap">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Fallback Mode Aktif</span>
+                </div>
               )}
-            </span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between py-2">
-            <span className="text-neutral-500">Total Tautan Terdaftar di Sistem:</span>
-            <span className="font-mono font-bold text-neutral-900 dark:text-neutral-100">
+          {/* Registered Links Count */}
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 block">
+                Total Tautan Terdaftar
+              </span>
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
+                Dalam database sistem
+              </span>
+            </div>
+            <span className="font-mono text-sm font-bold text-neutral-900 dark:text-neutral-100 px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shrink-0 whitespace-nowrap shadow-2xs">
               {healthStatus?.storage?.total_links ?? links.length} tautan
             </span>
           </div>
 
-          <div className="flex items-center justify-between py-2">
-            <span className="text-neutral-500">Kunci Tombstone (Proteksi Anti-Phishing):</span>
-            <span className="font-mono font-bold text-neutral-900 dark:text-neutral-100">
-              {healthStatus?.storage?.total_tombstones ?? 0} kode ter-reservasi
+          {/* Tombstones Count */}
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 block">
+                Kunci Tombstone
+              </span>
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
+                Proteksi anti-phishing
+              </span>
+            </div>
+            <span className="font-mono text-sm font-bold text-neutral-900 dark:text-neutral-100 px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shrink-0 whitespace-nowrap shadow-2xs">
+              {healthStatus?.storage?.total_tombstones ?? 0} tereservasi
             </span>
           </div>
         </div>
 
         {healthStatus?.storage?.detail_message && (
-          <div className="p-3 rounded-2xl bg-neutral-100/80 dark:bg-neutral-950/80 border border-neutral-200/50 dark:border-neutral-800 text-[11px] text-neutral-600 dark:text-neutral-400 leading-relaxed font-mono">
-            {healthStatus.storage.detail_message}
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-neutral-50 dark:bg-neutral-950/70 border border-neutral-200/60 dark:border-neutral-800 text-[11px] text-neutral-600 dark:text-neutral-400 font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="truncate">{healthStatus.storage.detail_message}</span>
           </div>
         )}
       </div>
@@ -263,40 +289,51 @@ export const SystemStatusView: React.FC<SystemStatusViewProps> = ({
       </div>
 
       {/* Local Client & Browser Environment State */}
-      <div className="p-5 rounded-3xl bg-white/90 dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-neutral-800 space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          <HardDrive className="w-4 h-4 text-neutral-500" />
-          <span>Status Peramban & Penyimpanan Lokal</span>
+      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-sm space-y-4">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-neutral-900 dark:text-neutral-100 pb-1 border-b border-neutral-100 dark:border-neutral-800/80">
+          <div className="p-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+            <HardDrive className="w-4 h-4" />
+          </div>
+          <span>Status Peramban & Penyimpanan Klien</span>
         </div>
 
-        <div className="space-y-2 text-xs text-neutral-600 dark:text-neutral-400">
-          <div className="flex items-center justify-between">
-            <span>ID Pemilik Anonim (Owner Identifier):</span>
-            <span className="font-mono text-neutral-900 dark:text-neutral-100 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
-              {ownerId ? `${ownerId.slice(0, 14)}...` : 'Belum diinisialisasi'}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              ID Pemilik Anonim
+            </span>
+            <span className="font-mono text-xs text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 px-2 py-0.5 rounded-lg shadow-2xs">
+              {ownerId ? `${ownerId.slice(0, 10)}...` : 'Belum aktif'}
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
-            <span>Kunci Manajemen Lokal Tersimpan:</span>
-            <span className="font-mono text-neutral-900 dark:text-neutral-100">
-              {localTokensCount} token
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              Kunci Manajemen Lokal
+            </span>
+            <span className="font-mono text-xs font-semibold text-neutral-900 dark:text-neutral-100 px-2 py-0.5 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs">
+              {localTokensCount} token tersimpan
             </span>
           </div>
 
           {storageUsage && (
-            <div className="flex items-center justify-between">
-              <span>Penggunaan Storage Peramban:</span>
-              <span className="font-mono text-neutral-900 dark:text-neutral-100">
+            <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                Storage Peramban
+              </span>
+              <span className="font-mono text-xs font-semibold text-neutral-900 dark:text-neutral-100">
                 {formatBytes(storageUsage.used)} / {formatBytes(storageUsage.quota)}
               </span>
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <span>Progressive Web App (PWA):</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-              Offline Cache Enabled
+          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-950/50 border border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              PWA Offline Cache
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Aktif
             </span>
           </div>
         </div>
