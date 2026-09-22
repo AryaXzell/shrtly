@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertCircle, X, Check, Globe } from 'lucide-react';
 import { motion } from 'motion/react';
 import { LinkRecord } from '../types';
+import { useModalA11y } from '../utils/a11y';
 
 interface EditModalProps {
   link: LinkRecord;
@@ -15,6 +16,8 @@ export const EditModal: React.FC<EditModalProps> = ({ link, isOpen, onClose, onS
   const [hasConfirmedWarning, setHasConfirmedWarning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useModalA11y(isOpen, onClose, 'edit-modal-container');
 
   if (!isOpen) return null;
 
@@ -52,18 +55,20 @@ export const EditModal: React.FC<EditModalProps> = ({ link, isOpen, onClose, onS
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="edit-modal-title"
     >
       <motion.div
         id="edit-modal-container"
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-left max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-left max-h-[90vh] overflow-y-auto outline-none"
       >
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          <h3 id="edit-modal-title" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
             Edit Tujuan Tautan /{link.code}
           </h3>
           <button
@@ -82,8 +87,7 @@ export const EditModal: React.FC<EditModalProps> = ({ link, isOpen, onClose, onS
             <div className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
               <div className="font-semibold">Peringatan: Perubahan Tujuan</div>
               <p>
-                "This changes where your existing short link leads."
-                Semua pengunjung yang membuka tautan publik yang sudah Anda bagikan akan langsung dialihkan ke alamat baru ini.
+                Tindakan ini mengubah tujuan tautan pendek Anda. Semua pengunjung yang membuka tautan publik yang sudah Anda bagikan akan langsung dialihkan ke alamat baru ini.
               </p>
             </div>
           </div>

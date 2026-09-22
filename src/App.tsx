@@ -5,6 +5,7 @@ import { HomeView } from './components/HomeView';
 import { LinksView } from './components/LinksView';
 import { LinkDetailView } from './components/LinkDetailView';
 import { SettingsView } from './components/SettingsView';
+import { SystemStatusView } from './components/SystemStatusView';
 import { StatusView } from './components/StatusView';
 import { WarningView } from './components/WarningView';
 import { DeleteModal } from './components/DeleteModal';
@@ -12,6 +13,7 @@ import { EditModal } from './components/EditModal';
 import { QRModal } from './components/QRModal';
 import { ReportModal } from './components/ReportModal';
 import { StatusToggleModal } from './components/StatusToggleModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { LinkRecord, HealthStatus } from './types';
 import {
   listOwnerLinks,
@@ -23,7 +25,7 @@ import {
 import { Check, AlertCircle } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'links' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'links' | 'system' | 'settings'>('home');
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(true);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
@@ -88,14 +90,20 @@ export default function App() {
       const path = window.location.pathname;
       const params = new URLSearchParams(window.location.search);
 
-      if (path === '/status' || params.has('status')) {
-        const sType = (params.get('type') || params.get('status') || 'unknown') as any;
+      if (path === '/system') {
+        setActiveTab('system');
+      } else if (path === '/status' || params.has('status')) {
+        const typeParam = params.get('type') || params.get('status');
         const code = params.get('code') || '';
-        setPageRoute({
-          type: 'status',
-          statusType: sType,
-          code,
-        });
+        if (typeParam && typeParam !== 'true' && typeParam !== 'system') {
+          setPageRoute({
+            type: 'status',
+            statusType: typeParam as any,
+            code,
+          });
+        } else {
+          setActiveTab('system');
+        }
       } else if (path === '/warning' || params.has('warning')) {
         const code = params.get('code') || '';
         const dest = params.get('dest') || params.get('target') || '';
@@ -136,6 +144,31 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Dynamic document title update for enhanced UX & SEO (B3)
+  useEffect(() => {
+    let title = 'SHRTLY — Fast, Minimalist & Privacy-First URL Shortener';
+    if (pageRoute.type === 'status') {
+      if (pageRoute.statusType === 'expired') {
+        title = 'Tautan Kedaluwarsa — SHRTLY';
+      } else if (pageRoute.statusType === 'disabled') {
+        title = 'Tautan Dinonaktifkan — SHRTLY';
+      } else if (pageRoute.statusType === 'deleted') {
+        title = 'Tautan Dihapus — SHRTLY';
+      }
+    } else if (pageRoute.type === 'warning') {
+      title = 'Peringatan Keamanan — SHRTLY';
+    } else if (selectedLinkForDetail) {
+      title = `Analitik /${selectedLinkForDetail.code} — SHRTLY`;
+    } else if (activeTab === 'links') {
+      title = 'Daftar Tautan Anda — SHRTLY';
+    } else if (activeTab === 'system') {
+      title = 'Status Sistem & Backend — SHRTLY';
+    } else if (activeTab === 'settings') {
+      title = 'Pengaturan & Ekspor — SHRTLY';
+    }
+    document.title = title;
+  }, [pageRoute, selectedLinkForDetail, activeTab]);
 
   // Fetch links & health check
   const refreshLinks = useCallback(async () => {
@@ -254,26 +287,69 @@ export default function App() {
   // Handler for Bulk Delete
   const handleBulkDelete = async (selectedLinks: LinkRecord[], permanent: boolean) => {
     try {
-      const promises = selectedLinks.map((l) =>
-        deleteLink(l.internal_id, permanent, l.code).catch(() => null)
-      );
-      await Promise.all(promises);
-      const deletedIds = new Set(selectedLinks.map((l) => l.internal_id));
+      const promises = selectedLinks.map(async (l) => {
+        try {
+          await deleteLink(l.internal_id, permanent, l.code);
+          return { internal_id: l.internal_id, success: true };
+        } catch {
+          return { internal_id: l.internal_id, success: false };
+        }
+      });
+      const results = await Promise.all(promises);
+      const successfulDeletes = results.filter((r) => r.success);
+      const deletedIds = new Set(successfulDeletes.map((r) => r.internal_id));
+
       setLinks((prev) => prev.filter((l) => !deletedIds.has(l.internal_id)));
 
       if (selectedLinkForDetail && deletedIds.has(selectedLinkForDetail.internal_id)) {
         setSelectedLinkForDetail(null);
       }
 
-      showToast(
-        permanent
-          ? `${selectedLinks.length} tautan telah dihapus permanen dari server.`
-          : `${selectedLinks.length} tautan telah dihapus dari kelola Anda.`
-      );
+      if (successfulDeletes.length === selectedLinks.length) {
+        showToast(
+          permanent
+            ? `${successfulDeletes.length} tautan telah dihapus permanen dari server.`
+            : `${successfulDeletes.length} tautan telah dihapus dari kelola Anda.`
+        );
+      } else if (successfulDeletes.length > 0) {
+        showToast(
+          permanent
+            ? `${successfulDeletes.length} dari ${selectedLinks.length} tautan berhasil dihapus permanen.`
+            : `${successfulDeletes.length} dari ${selectedLinks.length} tautan berhasil dihapus dari kelola Anda.`,
+          'error'
+        );
+      } else {
+        showToast('Gagal menghapus tautan yang dipilih.', 'error');
+      }
     } catch {
       showToast('Gagal menghapus beberapa tautan.', 'error');
     }
   };
+
+  // Stable memoized callbacks to prevent LinkCard and View re-renders (Temuan #5)
+  const handleOpenQR = useCallback((link: LinkRecord) => {
+    setLinkForQR(link);
+  }, []);
+
+  const handleOpenAnalytics = useCallback((link: LinkRecord) => {
+    setSelectedLinkForDetail(link);
+  }, []);
+
+  const handleBackFromDetail = useCallback(() => {
+    setSelectedLinkForDetail(null);
+  }, []);
+
+  const handleNavigateToHome = useCallback(() => {
+    setActiveTab('home');
+  }, []);
+
+  const handleEditDestination = useCallback((link: LinkRecord) => {
+    setLinkToEdit(link);
+  }, []);
+
+  const handleDeleteLink = useCallback((link: LinkRecord) => {
+    setLinkToDelete(link);
+  }, []);
 
   // Render Status View if navigated to /status
   if (pageRoute.type === 'status' && pageRoute.statusType) {
@@ -345,7 +421,7 @@ export default function App() {
       onSelectTab={(tab) => {
         setSelectedLinkForDetail(null);
         setActiveTab(tab);
-        if (tab === 'settings') {
+        if (tab === 'settings' || tab === 'system') {
           handleRefreshHealth();
         }
       }}
@@ -357,39 +433,39 @@ export default function App() {
         {toast && (
           <motion.div
             key="shrtly-toast-capsule"
-            initial={{ opacity: 0, y: -32, scale: 0.85, filter: 'blur(3px)' }}
+            initial={{ opacity: 0, y: -24, scale: 0.8, filter: 'blur(4px)' }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -32, scale: 0.85, filter: 'blur(3px)' }}
+            exit={{ opacity: 0, y: -28, scale: 0.85, filter: 'blur(4px)' }}
             transition={{
               type: 'spring',
-              stiffness: 450,
-              damping: 25,
-              mass: 0.6,
+              stiffness: 380,
+              damping: 26,
+              mass: 0.8,
             }}
             id="shrtly-toast"
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center h-10 pl-3 pr-[18px] rounded-full shadow-[0_16px_36px_-4px_rgba(0,0,0,0.65),0_4px_12px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-2xl border select-none pointer-events-none gap-2.5"
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex items-center h-11 pl-3.5 pr-5 rounded-full shadow-[0_24px_48px_-12px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.08)_inset] backdrop-blur-3xl border select-none pointer-events-none gap-3"
             style={{
-              backgroundColor: 'rgba(9, 9, 11, 0.98)',
+              backgroundColor: 'rgba(15, 15, 20, 0.98)',
               borderColor:
                 toast.type === 'success'
-                  ? 'rgba(52, 199, 89, 0.28)'
-                  : 'rgba(255, 59, 48, 0.3)',
+                  ? 'rgba(16, 185, 129, 0.25)'
+                  : 'rgba(239, 68, 68, 0.25)',
             }}
           >
             <div
-              className={`flex items-center justify-center w-[22px] h-[22px] rounded-full border transition-all duration-300 ${
+              className={`flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-300 ${
                 toast.type === 'success'
-                  ? 'bg-emerald-500/15 text-[#34C759] border-emerald-500/25 shadow-[0_0_8px_rgba(52,199,89,0.15)]'
-                  : 'bg-rose-500/15 text-[#FF3B30] border-rose-500/25 shadow-[0_0_8px_rgba(255,59,48,0.15)]'
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                  : 'bg-rose-500/15 text-rose-400 border-rose-500/25 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
               }`}
             >
               {toast.type === 'success' ? (
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
               ) : (
-                <AlertCircle className="w-3.5 h-3.5 stroke-[3]" />
+                <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
               )}
             </div>
-            <span className="tracking-tight text-[13px] font-semibold text-white/95 whitespace-nowrap antialiased">
+            <span className="tracking-tight text-[13px] font-semibold text-neutral-100 whitespace-nowrap antialiased">
               {toast.message}
             </span>
           </motion.div>
@@ -416,7 +492,7 @@ export default function App() {
               <LinkDetailView
                 link={selectedLinkForDetail}
                 origin={origin}
-                onBack={() => setSelectedLinkForDetail(null)}
+                onBack={handleBackFromDetail}
               />
             </motion.div>
           ) : activeTab === 'home' ? (
@@ -437,8 +513,8 @@ export default function App() {
                 origin={origin}
                 userLinks={links}
                 onLinkCreated={handleLinkCreated}
-                onOpenQR={(l) => setLinkForQR(l)}
-                onOpenAnalytics={(l) => setSelectedLinkForDetail(l)}
+                onOpenQR={handleOpenQR}
+                onOpenAnalytics={handleOpenAnalytics}
               />
             </motion.div>
           ) : activeTab === 'links' ? (
@@ -459,14 +535,35 @@ export default function App() {
                 links={links}
                 loading={loadingLinks}
                 origin={origin}
-                onNavigateToHome={() => setActiveTab('home')}
-                onOpenAnalytics={(l) => setSelectedLinkForDetail(l)}
-                onOpenQR={(l) => setLinkForQR(l)}
-                onEditDestination={(l) => setLinkToEdit(l)}
+                onNavigateToHome={handleNavigateToHome}
+                onOpenAnalytics={handleOpenAnalytics}
+                onOpenQR={handleOpenQR}
+                onEditDestination={handleEditDestination}
                 onToggleStatus={handleToggleStatus}
-                onDelete={(l) => setLinkToDelete(l)}
+                onDelete={handleDeleteLink}
                 onBulkToggleStatus={handleBulkToggleStatus}
                 onBulkDelete={handleBulkDelete}
+              />
+            </motion.div>
+          ) : activeTab === 'system' ? (
+            <motion.div
+              key="view-system"
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.99 }}
+              transition={{
+                type: 'spring',
+                stiffness: 380,
+                damping: 32,
+                mass: 0.75,
+              }}
+              className="w-full"
+            >
+              <SystemStatusView
+                healthStatus={healthStatus}
+                links={links}
+                onRefreshHealth={handleRefreshHealth}
+                isRefreshingHealth={refreshingHealth}
               />
             </motion.div>
           ) : (
@@ -485,14 +582,11 @@ export default function App() {
             >
               <SettingsView
                 links={links}
-                healthStatus={healthStatus}
                 onClearLocalData={() => {
                   setLinks([]);
                   setSelectedLinkForDetail(null);
                   showToast('Riwayat peramban lokal telah dibersihkan.');
                 }}
-                onRefreshHealth={handleRefreshHealth}
-                isRefreshingHealth={refreshingHealth}
               />
             </motion.div>
           )}
@@ -550,6 +644,9 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Offline Status Warning Indicator */}
+      <OfflineIndicator />
     </AppShell>
   );
 }

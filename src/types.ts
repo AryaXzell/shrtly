@@ -49,7 +49,7 @@ export interface LinkAnalytics {
 export interface AuditLogEntry {
   id: string;
   timestamp: string;
-  event: 'created' | 'destination_edited' | 'disabled' | 'enabled' | 'deleted' | 'permanent_deleted' | 'claimed';
+  event: 'created' | 'destination_edited' | 'disabled' | 'enabled' | 'deleted' | 'permanent_deleted' | 'claimed' | 'flagged_suspicious';
   details?: string;
 }
 

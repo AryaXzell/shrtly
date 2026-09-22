@@ -66,7 +66,7 @@ export interface IStorageEngine {
   toggleLinkStatus(internalId: string, status: 'active' | 'disabled', token?: string, ownerId?: string): Promise<LinkRecord>;
   deleteLink(internalId: string, token?: string, permanentServerDelete?: boolean, ownerId?: string): Promise<{ success: boolean; code: string; wasPermanent: boolean }>;
   recordClick(code: string, clientInfo: { referrer?: string; userAgent?: string; country?: string }): Promise<void>;
-  getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null>;
+  getAnalytics(internalId: string, token?: string, ownerId?: string): Promise<LinkAnalytics | null>;
   recordReport(code: string, category: string, notes: string, clientIp: string): Promise<void>;
   checkRateLimit(key: string, maxRequests: number, windowSeconds: number): Promise<{ allowed: boolean; remaining: number; resetTimeSeconds: number }>;
   getAllLinksForExport(ownerId?: string, tokens?: string[]): Promise<LinkRecord[]>;
@@ -390,10 +390,11 @@ class LocalStorageEngine implements IStorageEngine {
     if (!isTokenMatch && !isOwnerMatch) throw new Error('Unauthorized');
 
     const code = item.link.code;
+    const normalizedCode = code.trim().toLowerCase();
 
     // ALWAYS tombstone the public code so it can NEVER be reused!
-    this.tombstones.add(code);
-    this.codeToId.delete(code);
+    this.tombstones.add(normalizedCode);
+    this.codeToId.delete(normalizedCode);
 
     if (permanentServerDelete) {
       // Hard delete from storage
@@ -465,7 +466,10 @@ class LocalStorageEngine implements IStorageEngine {
     this.scheduleSave();
   }
 
-  async getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null> {
+  async getAnalytics(internalId: string, token?: string, ownerId?: string): Promise<LinkAnalytics | null> {
+    const isAuth = await this.verifyManagementToken(internalId, token, ownerId);
+    if (!isAuth) throw new Error('Unauthorized');
+
     let item = this.links.get(internalId);
     if (!item) {
       const resolvedId = this.codeToId.get(internalId) || this.codeToId.get(internalId.toLowerCase());
@@ -547,6 +551,27 @@ class LocalStorageEngine implements IStorageEngine {
       client_ip: clientIp.replace(/(\d+)\.(\d+)\..*/, '$1.$2.*.*'), // Mask IP for privacy
     };
     this.reports.push(report);
+
+    // Auto-flag threshold: if link receives >= 3 reports, flag it as suspicious
+    const normalizedCode = code.trim().toLowerCase();
+    const codeReports = this.reports.filter((r) => r.code.trim().toLowerCase() === normalizedCode);
+    if (codeReports.length >= 3) {
+      const internalId = this.codeToId.get(normalizedCode);
+      if (internalId) {
+        const item = this.links.get(internalId);
+        if (item && !item.link.is_suspicious) {
+          item.link.is_suspicious = true;
+          item.link.suspicious_reason = `Auto-flagged due to multiple community reports (${codeReports.length} reports for ${category})`;
+          item.analytics.audit_logs.unshift({
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            event: 'flagged_suspicious',
+            details: `Auto-flagged due to community abuse reports`,
+          });
+        }
+      }
+    }
+
     this.scheduleSave();
   }
 
@@ -702,19 +727,19 @@ class UpstashStorageEngine implements IStorageEngine {
         details: `Created short link for ${data.destination}`,
       };
 
-      await this.redis.hset(`shrtly:link:${internalId}`, {
+      // Batch all Redis write operations in a single pipeline request
+      const pipeline = this.redis.pipeline();
+      pipeline.hset(`shrtly:link:${internalId}`, {
         link: JSON.stringify(link),
         token_hash: tokenHash,
       });
+      pipeline.sadd(`shrtly:owner:${data.owner_id}:links`, internalId);
+      pipeline.rpush(`shrtly:audit:${internalId}`, JSON.stringify(audit));
+      pipeline.set(`shrtly:code:${normalizedCode}`, internalId);
+      pipeline.sadd('shrtly:codes:active', normalizedCode);
+      await pipeline.exec();
 
-      await this.redis.sadd(`shrtly:owner:${data.owner_id}:links`, internalId);
-      await this.redis.rpush(`shrtly:audit:${internalId}`, JSON.stringify(audit));
-
-      // Persist direct code mapping and active code set in Redis
-      await this.redis.set(`shrtly:code:${normalizedCode}`, internalId);
-      await this.redis.sadd('shrtly:codes:active', normalizedCode);
-
-      // Mirror to local fallback with the EXACT SAME internal_id and token_hash
+      // Mirror to local fallback with the EXACT SAME internal_id and token_hash (asynchronous/non-blocking)
       this.fallback.saveDirectLink(link, tokenHash, audit);
 
       return { link, management_token: data.management_token };
@@ -727,7 +752,13 @@ class UpstashStorageEngine implements IStorageEngine {
   async getLinkByCode(code: string): Promise<LinkRecord | null> {
     try {
       const normalized = code.trim().toLowerCase();
-      const isTombstoned = await this.redis.sismember('shrtly:codes:tombstones', normalized);
+
+      // Optimize: pipeline both the code lookup and tombstone check to cut round-trips down to exactly 1 request
+      const pipeline = this.redis.pipeline();
+      pipeline.get<string>(`shrtly:code:${normalized}`);
+      pipeline.sismember('shrtly:codes:tombstones', normalized);
+      const [internalId, isTombstoned] = await pipeline.exec<[string | null, number]>();
+
       if (isTombstoned) {
         return {
           internal_id: 'tombstone',
@@ -742,8 +773,6 @@ class UpstashStorageEngine implements IStorageEngine {
         };
       }
 
-      let internalId = await this.redis.get<string>(`shrtly:code:${normalized}`);
-      
       // Self-heal: If missing or stuck on 'pending' reservation, resolve from local fallback
       if (!internalId || internalId === 'pending') {
         const local = await this.fallback.getLinkByCode(normalized);
@@ -795,7 +824,70 @@ class UpstashStorageEngine implements IStorageEngine {
   }
 
   async listLinksByOwner(ownerId: string = '', tokens: string[] = []): Promise<LinkRecord[]> {
-    return this.fallback.listLinksByOwner(ownerId, tokens);
+    try {
+      const redisLinkIds = new Set<string>();
+
+      // 1. Fetch owned link IDs from Upstash Redis Set
+      if (ownerId) {
+        const ids = await this.redis.smembers(`shrtly:owner:${ownerId}:links`);
+        if (ids && Array.isArray(ids)) {
+          for (const id of ids) {
+            if (id) redisLinkIds.add(id);
+          }
+        }
+      }
+
+      // Also merge any links that are stored in local fallback (handles local mirrors & guest token matches)
+      const fallbackLinks = await this.fallback.listLinksByOwner(ownerId, tokens);
+      for (const link of fallbackLinks) {
+        redisLinkIds.add(link.internal_id);
+      }
+
+      if (redisLinkIds.size === 0) {
+        return [];
+      }
+
+      // 2. Load all actual link records from Redis in a single pipeline to minimize latencies!
+      const linkIdsArray = Array.from(redisLinkIds);
+      const pipeline = this.redis.pipeline();
+      for (const id of linkIdsArray) {
+        pipeline.hget(`shrtly:link:${id}`, 'link');
+      }
+      const results = await pipeline.exec<string[]>();
+
+      const finalLinks: LinkRecord[] = [];
+      for (let i = 0; i < linkIdsArray.length; i++) {
+        const rawJson = results[i];
+        if (rawJson) {
+          try {
+            const parsed = JSON.parse(rawJson) as LinkRecord;
+            if (parsed.status !== 'deleted') {
+              // Handle active-to-expired dynamic check
+              if (parsed.expires_at && parsed.status === 'active') {
+                if (new Date(parsed.expires_at).getTime() < Date.now()) {
+                  parsed.status = 'expired';
+                }
+              }
+              finalLinks.push(parsed);
+            }
+          } catch {
+            // fallback if JSON parse fails
+          }
+        } else {
+          // If Redis doesn't have it, use local fallback link
+          const fLink = fallbackLinks.find((l) => l.internal_id === linkIdsArray[i]);
+          if (fLink) {
+            finalLinks.push(fLink);
+          }
+        }
+      }
+
+      // Sort by created_at descending (newest first)
+      return finalLinks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } catch (err) {
+      console.warn('Redis error during listLinksByOwner, falling back to local engine:', err);
+      return this.fallback.listLinksByOwner(ownerId, tokens);
+    }
   }
 
   async updateDestination(internalId: string, newDestination: string, token?: string, ownerId?: string): Promise<LinkRecord> {
@@ -808,8 +900,18 @@ class UpstashStorageEngine implements IStorageEngine {
     link.destination = newDestination;
     link.updated_at = new Date().toISOString();
 
-    await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
-    await this.fallback.updateDestination(internalId, newDestination, token, ownerId);
+    try {
+      await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
+    } catch (redisErr) {
+      console.error(`[UpstashStorageEngine] Failed to update destination in Redis for ${internalId}:`, redisErr);
+      throw new Error('Database write failure');
+    }
+
+    try {
+      await this.fallback.updateDestination(internalId, newDestination, token, ownerId);
+    } catch (fallbackErr) {
+      console.error(`[UpstashStorageEngine] Partial failure: Destination updated in Redis but failed to sync to fallback storage for ${internalId}:`, fallbackErr);
+    }
 
     return link;
   }
@@ -824,8 +926,18 @@ class UpstashStorageEngine implements IStorageEngine {
     link.status = status;
     link.updated_at = new Date().toISOString();
 
-    await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
-    await this.fallback.toggleLinkStatus(internalId, status, token, ownerId);
+    try {
+      await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(link) });
+    } catch (redisErr) {
+      console.error(`[UpstashStorageEngine] Failed to update status in Redis for ${internalId}:`, redisErr);
+      throw new Error('Database write failure');
+    }
+
+    try {
+      await this.fallback.toggleLinkStatus(internalId, status, token, ownerId);
+    } catch (fallbackErr) {
+      console.error(`[UpstashStorageEngine] Partial failure: Status updated in Redis but failed to sync to fallback storage for ${internalId}:`, fallbackErr);
+    }
 
     return link;
   }
@@ -878,12 +990,28 @@ class UpstashStorageEngine implements IStorageEngine {
     await this.fallback.recordClick(code, clientInfo);
   }
 
-  async getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null> {
-    return this.fallback.getAnalytics(internalId, token);
+  async getAnalytics(internalId: string, token?: string, ownerId?: string): Promise<LinkAnalytics | null> {
+    const isAuth = await this.verifyManagementToken(internalId, token, ownerId);
+    if (!isAuth) throw new Error('Unauthorized');
+    return this.fallback.getAnalytics(internalId, token, ownerId);
   }
 
   async recordReport(code: string, category: string, notes: string, clientIp: string): Promise<void> {
-    return this.fallback.recordReport(code, category, notes, clientIp);
+    await this.fallback.recordReport(code, category, notes, clientIp);
+
+    // Sync any automatic suspension to Redis
+    try {
+      const normalizedCode = code.trim().toLowerCase();
+      const internalId = await this.redis.get<string>(`shrtly:code:${normalizedCode}`);
+      if (internalId) {
+        const fallbackLink = await this.fallback.getLinkByInternalId(internalId);
+        if (fallbackLink && fallbackLink.is_suspicious) {
+          await this.redis.hset(`shrtly:link:${internalId}`, { link: JSON.stringify(fallbackLink) });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to sync auto-suspension to Redis:', err);
+    }
   }
 
   async checkRateLimit(
@@ -892,15 +1020,25 @@ class UpstashStorageEngine implements IStorageEngine {
     windowSeconds: number
   ): Promise<{ allowed: boolean; remaining: number; resetTimeSeconds: number }> {
     try {
-      const current = await this.redis.incr(`shrtly:rate:${key}`);
+      // Optimize: execute both increment and TTL lookup in a single pipelined request (only 1 network round-trip)
+      const pipeline = this.redis.pipeline();
+      pipeline.incr(`shrtly:rate:${key}`);
+      pipeline.ttl(`shrtly:rate:${key}`);
+      const [current, ttlResult] = await pipeline.exec<[number, number]>();
+
+      const actualTtl = ttlResult > 0 ? ttlResult : windowSeconds;
+
       if (current === 1) {
-        await this.redis.expire(`shrtly:rate:${key}`, windowSeconds);
+        // Set expiry on first increment asynchronously (fire-and-forget) to avoid blocking the request
+        this.redis.expire(`shrtly:rate:${key}`, windowSeconds).catch((err) => {
+          console.error('[RateLimit] Failed to set expire:', err);
+        });
       }
-      const ttl = await this.redis.ttl(`shrtly:rate:${key}`);
+
       if (current > maxRequests) {
-        return { allowed: false, remaining: 0, resetTimeSeconds: ttl > 0 ? ttl : windowSeconds };
+        return { allowed: false, remaining: 0, resetTimeSeconds: actualTtl };
       }
-      return { allowed: true, remaining: maxRequests - current, resetTimeSeconds: ttl > 0 ? ttl : windowSeconds };
+      return { allowed: true, remaining: maxRequests - current, resetTimeSeconds: actualTtl };
     } catch {
       return this.fallback.checkRateLimit(key, maxRequests, windowSeconds);
     }
@@ -1023,8 +1161,8 @@ export class DynamicStorageManager implements IStorageEngine {
     return this.active.recordClick(code, clientInfo);
   }
 
-  getAnalytics(internalId: string, token?: string): Promise<LinkAnalytics | null> {
-    return this.active.getAnalytics(internalId, token);
+  getAnalytics(internalId: string, token?: string, ownerId?: string): Promise<LinkAnalytics | null> {
+    return this.active.getAnalytics(internalId, token, ownerId);
   }
 
   recordReport(code: string, category: string, notes: string, clientIp: string): Promise<void> {

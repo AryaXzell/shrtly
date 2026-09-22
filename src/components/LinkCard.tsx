@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { LinkRecord } from '../types';
 import { haptic } from '../utils/haptics';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface LinkCardProps {
   link: LinkRecord;
@@ -128,12 +129,16 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
 
   const shortUrl = `${origin}/${link.code}`;
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(shortUrl);
-    haptic.success();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyToClipboard(shortUrl);
+    if (ok) {
+      haptic.success();
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      haptic.error();
+    }
   };
 
   // Compute Expiration Display
@@ -204,7 +209,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
               haptic.selection();
               onToggleSelect?.(link.internal_id);
             }}
-            className={`mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center transition-all shrink-0 border cursor-pointer ${
+            className={`relative mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center transition-all shrink-0 border cursor-pointer before:absolute before:inset-[-12px] before:content-[''] ${
               isSelected
                 ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white shadow-xs'
                 : 'bg-neutral-100/80 dark:bg-neutral-800/80 border-neutral-300/90 dark:border-neutral-700 hover:border-neutral-500 hover:bg-neutral-200/60 dark:hover:bg-neutral-700'
@@ -251,6 +256,8 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                 }}
                 className="p-2 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer active:scale-95"
                 aria-label="Menu opsi tautan"
+                aria-haspopup="menu"
+                aria-expanded={isOpen ? 'true' : 'false'}
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
@@ -263,6 +270,8 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
+                    role="menu"
+                    aria-label="Opsi tautan"
                     className={`hidden sm:block absolute right-0 z-50 w-48 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xl py-1.5 text-xs text-neutral-700 dark:text-neutral-300 ${
                       openUpward ? 'bottom-full mb-2 origin-bottom-right' : 'top-full mt-2 origin-top-right'
                     }`}
@@ -272,6 +281,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                         closeMenu();
                         onOpenAnalytics(link);
                       }}
+                      role="menuitem"
                       className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer"
                     >
                       <BarChart2 className="w-3.5 h-3.5" />
@@ -283,6 +293,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                         closeMenu();
                         onOpenQR(link);
                       }}
+                      role="menuitem"
                       className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer"
                     >
                       <QrCode className="w-3.5 h-3.5" />
@@ -294,6 +305,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                         closeMenu();
                         onEditDestination(link);
                       }}
+                      role="menuitem"
                       className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -305,6 +317,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                         closeMenu();
                         onToggleStatus(link);
                       }}
+                      role="menuitem"
                       className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer"
                     >
                       <Power className="w-3.5 h-3.5" />
@@ -316,6 +329,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                       target="_blank"
                       rel="noreferrer"
                       onClick={() => closeMenu()}
+                      role="menuitem"
                       className="w-full px-3.5 py-2 flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -329,6 +343,7 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
                         closeMenu();
                         onDelete(link);
                       }}
+                      role="menuitem"
                       className="w-full px-3.5 py-2 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-left cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

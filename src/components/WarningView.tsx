@@ -90,10 +90,10 @@ export const WarningView: React.FC<WarningViewProps> = ({
       </div>
 
       {/* Safety Actions */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
         <button
           onClick={onNavigateHome}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shadow-sm"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shadow-sm"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Kembali ke Tempat Aman</span>
@@ -102,7 +102,7 @@ export const WarningView: React.FC<WarningViewProps> = ({
         <button
           onClick={handleProceed}
           disabled={!safeDestination}
-          className={`w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-300 transition-colors ${
+          className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-300 transition-colors ${
             !safeDestination
               ? 'opacity-40 cursor-not-allowed'
               : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'

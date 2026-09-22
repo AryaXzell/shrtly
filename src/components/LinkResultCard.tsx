@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Copy, Check, Share2, QrCode, ArrowUpRight, BarChart2 } from 'lucide-react';
 import { LinkRecord } from '../types';
 import { haptic } from '../utils/haptics';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface LinkResultCardProps {
   link: LinkRecord;
@@ -21,10 +22,14 @@ export const LinkResultCard: React.FC<LinkResultCardProps> = ({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(shortUrl);
-      haptic.success();
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const ok = await copyToClipboard(shortUrl);
+      if (ok) {
+        haptic.success();
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        throw new Error();
+      }
     } catch {
       haptic.error();
       setShareFeedback('Gagal menyalin');

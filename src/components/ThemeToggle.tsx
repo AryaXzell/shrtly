@@ -55,6 +55,7 @@ export const ThemeToggle: React.FC = () => {
                 : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200'
             }`}
             title={opt.label}
+            aria-label={opt.label}
             aria-pressed={isActive}
           >
             {isActive && (

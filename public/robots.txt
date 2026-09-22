@@ -1,0 +1,6 @@
+# Robots.txt for SHRTLY
+# Allow search engines to index only the main landing page and disallow dynamic short-link redirect paths.
+
+User-agent: *
+Allow: /$
+Disallow: /

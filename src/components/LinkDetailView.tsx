@@ -27,6 +27,7 @@ import {
 import { LinkRecord, LinkAnalytics } from '../types';
 import { getLinkAnalytics } from '../utils/api';
 import { haptic } from '../utils/haptics';
+import { copyToClipboard } from '../utils/clipboard';
 import { EmptyState } from './EmptyState';
 import { NoAnalyticsIllustration } from './illustrations/Illustrations';
 
@@ -97,11 +98,15 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
     };
   }, [link.internal_id, link.code]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shortUrl);
-    haptic.success();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(shortUrl);
+    if (ok) {
+      haptic.success();
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      haptic.error();
+    }
   };
 
   const selectedDevicesRatio = useMemo(() => {

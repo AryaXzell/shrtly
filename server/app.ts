@@ -21,6 +21,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Strict HSTS for production (only when connection is HTTPS or via reverse proxy)
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
+  // Robust Content-Security-Policy supporting fonts from Google/Gstatic and standard source assets
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self';"
+  );
   next();
 });
 
@@ -249,13 +259,28 @@ app.get('/api/links', async (req: Request, res: Response) => {
 
 // Get single link analytics & detail - accessible directly
 app.get('/api/links/:id', async (req: Request, res: Response) => {
+  const clientIp = getClientIp(req);
+
+  // Rate limit: 60 analytics reads per minute per IP
+  const rateCheck = await storage.checkRateLimit(`analytics:${clientIp}`, 60, 60);
+  if (!rateCheck.allowed) {
+    res.status(429).json({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many analytics requests. Please try again later.',
+      },
+    });
+    return;
+  }
+
   const { id } = req.params;
   const authHeader = req.headers['authorization'] || '';
   const tokenFromHeader = (req.headers['x-management-token'] as string) || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : tokenFromHeader.trim();
+  const ownerId = (req.headers['x-owner-id'] as string) || '';
 
   try {
-    const analytics = await storage.getAnalytics(id, token);
+    const analytics = await storage.getAnalytics(id, token, ownerId);
     if (!analytics) {
       res.status(404).json({
         error: {
@@ -267,6 +292,15 @@ app.get('/api/links/:id', async (req: Request, res: Response) => {
     }
     res.json({ analytics });
   } catch (err: any) {
+    if (err?.message === 'Unauthorized') {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Tidak memiliki izin untuk mengakses analitik tautan ini.',
+        },
+      });
+      return;
+    }
     console.error('Failed to get analytics:', err);
     res.status(500).json({
       error: {
@@ -279,6 +313,20 @@ app.get('/api/links/:id', async (req: Request, res: Response) => {
 
 // Update destination or toggle status
 app.patch('/api/links/:id', async (req: Request, res: Response) => {
+  const clientIp = getClientIp(req);
+
+  // Rate limit: 20 edits per minute per IP
+  const rateCheck = await storage.checkRateLimit(`edit:${clientIp}`, 20, 60);
+  if (!rateCheck.allowed) {
+    res.status(429).json({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many edit requests. Please try again later.',
+      },
+    });
+    return;
+  }
+
   const { id } = req.params;
   const authHeader = req.headers['authorization'] || '';
   const tokenFromHeader = (req.headers['x-management-token'] as string) || '';
@@ -344,6 +392,20 @@ app.patch('/api/links/:id', async (req: Request, res: Response) => {
 
 // Delete link
 app.delete('/api/links/:id', async (req: Request, res: Response) => {
+  const clientIp = getClientIp(req);
+
+  // Rate limit: 20 deletions per minute per IP
+  const rateCheck = await storage.checkRateLimit(`delete:${clientIp}`, 20, 60);
+  if (!rateCheck.allowed) {
+    res.status(429).json({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many delete requests. Please try again later.',
+      },
+    });
+    return;
+  }
+
   const { id } = req.params;
   const authHeader = req.headers['authorization'] || '';
   const tokenFromHeader = (req.headers['x-management-token'] as string) || '';

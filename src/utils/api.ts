@@ -14,12 +14,24 @@ import {
   removeManagementToken,
 } from './tokenStorage';
 
+async function parseJsonSafe(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (err) {
+    if (!res.ok) {
+      throw new Error(`Koneksi server terganggu (HTTP ${res.status}). Silakan coba sesaat lagi.`);
+    }
+    throw new Error('Respon server tidak valid. Silakan coba beberapa saat lagi.');
+  }
+}
+
 export async function checkHealth(): Promise<HealthStatus> {
   const res = await fetch('/api/health');
   if (!res.ok) {
     throw new Error('Health check failed');
   }
-  return res.json();
+  return parseJsonSafe(res);
 }
 
 export async function createShortLink(
@@ -37,7 +49,7 @@ export async function createShortLink(
     }),
   });
 
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     const err = data as ApiErrorResponse;
     throw new Error(err?.error?.message || 'Failed to create short link');
@@ -59,7 +71,7 @@ export async function listOwnerLinks(): Promise<LinkRecord[]> {
     },
   });
 
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     throw new Error(data?.error?.message || 'Failed to list links');
   }
@@ -80,7 +92,7 @@ export async function getLinkAnalytics(internalId: string, code?: string): Promi
     headers,
   });
 
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     throw new Error(data?.error?.message || 'Gagal memuat analitik tautan');
   }
@@ -104,7 +116,7 @@ export async function updateLinkDestination(internalId: string, newDestination: 
     body: JSON.stringify({ destination: newDestination }),
   });
 
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     throw new Error(data?.error?.message || 'Gagal memperbarui tautan');
   }
@@ -128,7 +140,7 @@ export async function toggleLinkStatus(internalId: string, status: 'active' | 'd
     body: JSON.stringify({ status }),
   });
 
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     throw new Error(data?.error?.message || 'Gagal mengubah status tautan');
   }
@@ -154,7 +166,7 @@ export async function deleteLink(
     headers,
   });
 
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     throw new Error(data?.error?.message || 'Gagal menghapus tautan');
   }
@@ -172,8 +184,25 @@ export async function reportLinkAbuse(code: string, category: string, notes: str
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, category, notes }),
   });
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
     throw new Error(data?.error?.message || 'Failed to submit report');
   }
+}
+
+export async function exportLinks(format: 'json' | 'csv'): Promise<Blob> {
+  const ownerId = getOrCreateOwnerId();
+  const tokens = getAllTokensList();
+
+  const res = await fetch(`/api/export?format=${format}`, {
+    headers: {
+      'x-owner-id': ownerId,
+      'x-management-tokens': tokens.join(','),
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error('Gagal mengunduh ekspor tautan');
+  }
+  return res.blob();
 }

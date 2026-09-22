@@ -219,7 +219,7 @@ export const LinksView: React.FC<LinksViewProps> = ({
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Sort selector iOS Dropdown */}
-            <div className="flex-1 sm:flex-initial">
+            <div className="flex-1 sm:flex-initial min-w-0">
               <IOSDropdown
                 id="links-sort-select"
                 value={sortBy}
@@ -372,14 +372,14 @@ export const LinksView: React.FC<LinksViewProps> = ({
           </div>
 
           {/* Action Buttons: Bulk Enable, Bulk Disable, Bulk Delete */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap justify-end">
             {/* Activate Button */}
             <button
               type="button"
               id="bulk-enable-btn"
               onClick={() => handleBulkStatusChange('active')}
               disabled={isBulkOperating}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
             >
               {isBulkOperating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
               <span>Aktifkan</span>
@@ -391,7 +391,7 @@ export const LinksView: React.FC<LinksViewProps> = ({
               id="bulk-disable-btn"
               onClick={() => handleBulkStatusChange('disabled')}
               disabled={isBulkOperating}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
             >
               {isBulkOperating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
               <span>Nonaktifkan</span>
@@ -406,7 +406,7 @@ export const LinksView: React.FC<LinksViewProps> = ({
                 setShowBulkDeleteModal(true);
               }}
               disabled={isBulkOperating}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Hapus</span>
@@ -417,7 +417,7 @@ export const LinksView: React.FC<LinksViewProps> = ({
               type="button"
               id="bulk-clear-selection-btn"
               onClick={handleClearSelection}
-              className="hidden sm:inline-flex p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+              className="hidden sm:inline-flex p-1.5 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
               title="Batalkan semua pilihan"
             >
               <X className="w-4 h-4" />

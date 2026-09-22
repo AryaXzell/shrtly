@@ -1,13 +1,13 @@
 import React from 'react';
-import { Link2, List, Settings } from 'lucide-react';
+import { Link2, List, Activity, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ThemeToggle } from './ThemeToggle';
 import { HealthStatus } from '../types';
 import { haptic } from '../utils/haptics';
 
 interface AppShellProps {
-  activeTab: 'home' | 'links' | 'settings';
-  onSelectTab: (tab: 'home' | 'links' | 'settings') => void;
+  activeTab: 'home' | 'links' | 'system' | 'settings';
+  onSelectTab: (tab: 'home' | 'links' | 'system' | 'settings') => void;
   linksCount: number;
   healthStatus: HealthStatus | null;
   children: React.ReactNode;
@@ -20,16 +20,17 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
   healthStatus,
   children,
 }) => {
-  const handleTabChange = (tab: 'home' | 'links' | 'settings') => {
+  const handleTabChange = (tab: 'home' | 'links' | 'system' | 'settings') => {
     if (tab !== activeTab) {
       haptic.selection();
     }
     onSelectTab(tab);
   };
 
-  const navItems: { id: 'home' | 'links' | 'settings'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const navItems: { id: 'home' | 'links' | 'system' | 'settings'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'home', label: 'Shorten', icon: Link2 },
     { id: 'links', label: 'My Links', icon: List },
+    { id: 'system', label: 'System Status', icon: Activity },
     { id: 'settings', label: 'Data & Settings', icon: Settings },
   ];
 
@@ -39,10 +40,11 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
       <header className="sticky top-0 z-40 w-full border-b border-neutral-200/60 dark:border-neutral-800/80 bg-white/70 dark:bg-neutral-950/70 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           {/* Logo / Brand */}
-          <div
+          <button
             onClick={() => handleTabChange('home')}
-            className="flex items-center gap-2.5 cursor-pointer select-none group"
+            className="flex items-center gap-2.5 cursor-pointer select-none group text-left outline-none"
             id="brand-home-link"
+            aria-label="Kembali ke Beranda SHRTLY"
           >
             <div className="w-8 h-8 rounded-xl overflow-hidden bg-neutral-900 dark:bg-black shadow-sm ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
               <img src="/favicon.svg" alt="SHRTLY Logo" className="w-full h-full object-cover" />
@@ -55,7 +57,7 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
                 fast • quiet • clear
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Desktop Nav Links */}
           <nav className="hidden sm:flex items-center gap-1 bg-neutral-100/60 dark:bg-neutral-900/60 p-1 rounded-full border border-neutral-200/50 dark:border-neutral-800/50" role="tablist">
@@ -175,6 +177,28 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
               {linksCount}
             </span>
           )}
+        </button>
+
+        <button
+          id="mobile-tab-system"
+          role="tab"
+          aria-selected={activeTab === 'system'}
+          onClick={() => handleTabChange('system')}
+          className={`relative flex flex-col items-center justify-center px-4 py-2 min-h-[38px] min-w-[64px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
+            activeTab === 'system'
+              ? 'text-neutral-950 dark:text-white font-semibold'
+              : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+          }`}
+        >
+          {activeTab === 'system' && (
+            <motion.div
+              layoutId="mobile-active-nav-bubble"
+              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
+            />
+          )}
+          <Activity className="w-4 h-4" />
+          <span className="text-[9px] tracking-tight">System</span>
         </button>
 
         <button

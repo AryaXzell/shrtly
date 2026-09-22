@@ -194,7 +194,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
           SHRTLY
         </h1>
         <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 font-normal">
-          Short links, without the noise.
+          Tautan pendek, tanpa kerumitan.
         </p>
       </motion.div>
 
@@ -202,39 +202,41 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* URL Input Box */}
         <div className="relative group">
-          <div className="relative flex items-center p-1.5 rounded-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 shadow-sm group-focus-within:border-neutral-400 dark:group-focus-within:border-neutral-600 transition-all">
-            <div className="pl-3.5 pr-2 text-neutral-400">
-              <LinkIcon className="w-4 h-4" />
+          <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center p-1.5 gap-2 sm:gap-0 rounded-3xl sm:rounded-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 shadow-sm group-focus-within:border-neutral-400 dark:group-focus-within:border-neutral-600 transition-all">
+            <div className="flex items-center flex-1 min-w-0">
+              <div className="pl-3.5 pr-2 text-neutral-400 shrink-0">
+                <LinkIcon className="w-4 h-4" />
+              </div>
+              <input
+                id="main-url-input"
+                type="text"
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (inlineError) setInlineError(null);
+                }}
+                disabled={isSubmitting}
+                placeholder="Tempel URL Anda (misal: github.com/aryaxzell)..."
+                className="w-full py-2.5 text-sm bg-transparent text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none"
+                autoComplete="off"
+                autoFocus
+              />
             </div>
-            <input
-              id="main-url-input"
-              type="text"
-              value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                if (inlineError) setInlineError(null);
-              }}
-              disabled={isSubmitting}
-              placeholder="Paste your URL (e.g. github.com/aryaxzell)..."
-              className="w-full py-2.5 text-sm bg-transparent text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none"
-              autoComplete="off"
-              autoFocus
-            />
             {!url && (
-              <div className="hidden sm:flex items-center mr-2">
+              <div className="hidden sm:flex items-center mr-2 shrink-0">
                 <kbd className="px-2 py-0.5 text-[10px] font-mono font-medium text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 rounded-md select-none pointer-events-none">
                   {isMac ? '⌘K' : 'Ctrl+K'}
                 </kbd>
               </div>
             )}
-             <motion.button
+            <motion.button
               whileTap={{ scale: 0.96 }}
               id="shorten-submit-btn"
               type="submit"
               disabled={isSubmitting || !url.trim() || !validation.isValid}
-              className="px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none transition-opacity shrink-0 cursor-pointer"
+              className="px-5 py-2.5 rounded-2xl sm:rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none transition-opacity shrink-0 cursor-pointer w-full sm:w-auto"
             >
-              {isSubmitting ? 'Shortening...' : 'Shorten'}
+              {isSubmitting ? 'Memperpendek...' : 'Perpendek'}
             </motion.button>
           </div>
         </div>

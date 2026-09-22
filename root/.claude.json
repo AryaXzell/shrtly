@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "upstash": {
+      "type": "sse",
+      "url": "https://mcp.upstash.com/mcp"
+    }
+  }
+}

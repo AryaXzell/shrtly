@@ -3,6 +3,7 @@ import { Flag, X, Check, AlertCircle, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { reportLinkAbuse } from '../utils/api';
 import { IOSDropdown } from './IOSDropdown';
+import { useModalA11y } from '../utils/a11y';
 
 interface ReportModalProps {
   code: string;
@@ -16,6 +17,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({ code, isOpen, onClose 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useModalA11y(isOpen, onClose, 'report-modal-container');
 
   if (!isOpen) return null;
 
@@ -48,18 +51,20 @@ export const ReportModal: React.FC<ReportModalProps> = ({ code, isOpen, onClose 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="report-modal-title"
     >
       <motion.div
         id="report-modal-container"
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-left max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-left max-h-[90vh] overflow-y-auto outline-none"
       >
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold text-sm">
+          <div id="report-modal-title" className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold text-sm">
             <Flag className="w-4 h-4" />
             <span>Laporkan Tautan /{code}</span>
           </div>

@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "name": "SHRTLY — Pemendek Tautan Aman",
+  "short_name": "SHRTLY",
+  "description": "Pemendek tautan cepat, senyap, bersih, dan aman dengan analitik mendalam.",
+  "display": "standalone",
+  "theme_color": "#09090b",
+  "background_color": "#09090b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

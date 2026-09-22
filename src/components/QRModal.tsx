@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { X, Download, Copy, Check } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useModalA11y } from '../utils/a11y';
 
 interface QRModalProps {
   shortUrl: string;
@@ -14,6 +15,8 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
   const [svgString, setSvgString] = useState<string>('');
   const [dataUrl, setDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
+
+  useModalA11y(isOpen, onClose, 'qr-modal-container');
 
   useEffect(() => {
     if (isOpen && shortUrl) {
@@ -72,18 +75,20 @@ export const QRModal: React.FC<QRModalProps> = ({ shortUrl, code, isOpen, onClos
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="qr-modal-title"
     >
       <motion.div
         id="qr-modal-container"
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center"
+        className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center outline-none"
       >
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+          <h3 id="qr-modal-title" className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Kode QR Tautan
           </h3>
           <button

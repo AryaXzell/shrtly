@@ -3,6 +3,7 @@ import { AlertTriangle, Trash2, X, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { LinkRecord } from '../types';
 import { haptic } from '../utils/haptics';
+import { useModalA11y } from '../utils/a11y';
 
 interface DeleteModalProps {
   link: LinkRecord;
@@ -20,6 +21,8 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
   const [deleteOnServer, setDeleteOnServer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useModalA11y(isOpen, onClose, 'delete-modal-container');
 
   useEffect(() => {
     if (isOpen) {
@@ -60,12 +63,13 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
       {/* Container: Bottom-sheet on mobile, centered glass modal on desktop */}
       <motion.div
         id="delete-modal-container"
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-t-[28px] sm:rounded-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl outline-none"
       >
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-semibold">
