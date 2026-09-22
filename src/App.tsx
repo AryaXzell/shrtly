@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppShell } from './components/AppShell';
 import { HomeView } from './components/HomeView';
@@ -24,8 +24,12 @@ import {
 } from './utils/api';
 import { Check, AlertCircle } from 'lucide-react';
 
+const TAB_LIST: ('home' | 'links' | 'system' | 'settings')[] = ['home', 'links', 'system', 'settings'];
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'links' | 'system' | 'settings'>('home');
+  const [isSwiping, setIsSwiping] = useState<boolean>(false);
+  const [swipeProgress, setSwipeProgress] = useState<number>(0);
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(true);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
@@ -328,7 +332,12 @@ export default function App() {
     }
   };
 
-  // Stable memoized callbacks to prevent LinkCard and View re-renders (Temuan #5)
+  const handleSelectTab = useCallback((tab: 'home' | 'links' | 'system' | 'settings') => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    setSelectedLinkForDetail(null);
+  }, [activeTab]);
+
   const handleOpenQR = useCallback((link: LinkRecord) => {
     setLinkForQR(link);
   }, []);
@@ -342,8 +351,65 @@ export default function App() {
   }, []);
 
   const handleNavigateToHome = useCallback(() => {
-    setActiveTab('home');
-  }, []);
+    handleSelectTab('home');
+  }, [handleSelectTab]);
+
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (selectedLinkForDetail || e.touches.length !== 1) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isHorizontalSwipe.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || selectedLinkForDetail) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = currentX - touchStartX.current;
+    const diffY = currentY - touchStartY.current;
+
+    if (isHorizontalSwipe.current === null) {
+      if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+        isHorizontalSwipe.current = Math.abs(diffX) > Math.abs(diffY) * 1.2;
+      }
+    }
+
+    if (isHorizontalSwipe.current) {
+      setIsSwiping(true);
+      const progress = Math.min(Math.max(Math.abs(diffX) / 80, 0), 1);
+      setSwipeProgress(progress);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setIsSwiping(false);
+    setSwipeProgress(0);
+    if (touchStartX.current === null || isHorizontalSwipe.current !== true || selectedLinkForDetail) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      isHorizontalSwipe.current = null;
+      return;
+    }
+
+    const endX = e.changedTouches[0].clientX;
+    const diffX = endX - touchStartX.current;
+    const swipeThreshold = 40;
+
+    const currIdx = TAB_LIST.indexOf(activeTab);
+    if (diffX < -swipeThreshold && currIdx < TAB_LIST.length - 1) {
+      handleSelectTab(TAB_LIST[currIdx + 1]);
+    } else if (diffX > swipeThreshold && currIdx > 0) {
+      handleSelectTab(TAB_LIST[currIdx - 1]);
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+    isHorizontalSwipe.current = null;
+  };
 
   const handleEditDestination = useCallback((link: LinkRecord) => {
     setLinkToEdit(link);
@@ -421,23 +487,24 @@ export default function App() {
     <AppShell
       activeTab={activeTab}
       onSelectTab={(tab) => {
-        setSelectedLinkForDetail(null);
-        setActiveTab(tab);
+        handleSelectTab(tab);
         if (tab === 'settings' || tab === 'system') {
           handleRefreshHealth();
         }
       }}
       linksCount={links.length}
       healthStatus={healthStatus}
+      isSwiping={isSwiping}
+      swipeProgress={swipeProgress}
     >
       {/* Dynamic iOS Capsule Toast Feedback */}
       <AnimatePresence>
         {toast && (
           <motion.div
             key="shrtly-toast-capsule"
-            initial={{ opacity: 0, y: -24, scale: 0.8, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -28, scale: 0.85, filter: 'blur(4px)' }}
+            initial={{ opacity: 0, y: -24, scale: 0.85 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -28, scale: 0.88 }}
             transition={{
               type: 'spring',
               stiffness: 380,
@@ -445,13 +512,12 @@ export default function App() {
               mass: 0.8,
             }}
             id="shrtly-toast"
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex items-center h-11 pl-3.5 pr-5 rounded-full shadow-[0_24px_48px_-12px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.08)_inset] backdrop-blur-3xl border select-none pointer-events-none gap-3"
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex items-center h-11 pl-3.5 pr-5 rounded-full shadow-2xl border select-none pointer-events-none gap-3 bg-neutral-900/95 dark:bg-neutral-900"
             style={{
-              backgroundColor: 'rgba(15, 15, 20, 0.98)',
               borderColor:
                 toast.type === 'success'
-                  ? 'rgba(16, 185, 129, 0.25)'
-                  : 'rgba(239, 68, 68, 0.25)',
+                  ? 'rgba(16, 185, 129, 0.35)'
+                  : 'rgba(239, 68, 68, 0.35)',
             }}
           >
             <div
@@ -474,8 +540,13 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Main View Router with iOS Spring Transitions */}
-      <div className="w-full relative overflow-hidden">
+      {/* Main View Router with Real-Time Sliding Track */}
+      <div
+        className="w-full relative overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <AnimatePresence mode="wait" initial={false}>
           {selectedLinkForDetail ? (
             <motion.div
@@ -497,99 +568,67 @@ export default function App() {
                 onBack={handleBackFromDetail}
               />
             </motion.div>
-          ) : activeTab === 'home' ? (
-            <motion.div
-              key="view-home"
-              initial={{ opacity: 0, y: 10, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
-              transition={{
-                type: 'spring',
-                stiffness: 380,
-                damping: 32,
-                mass: 0.75,
-              }}
-              className="w-full"
-            >
-              <HomeView
-                origin={origin}
-                userLinks={links}
-                onLinkCreated={handleLinkCreated}
-                onOpenQR={handleOpenQR}
-                onOpenAnalytics={handleOpenAnalytics}
-              />
-            </motion.div>
-          ) : activeTab === 'links' ? (
-            <motion.div
-              key="view-links"
-              initial={{ opacity: 0, y: 10, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
-              transition={{
-                type: 'spring',
-                stiffness: 380,
-                damping: 32,
-                mass: 0.75,
-              }}
-              className="w-full"
-            >
-              <LinksView
-                links={links}
-                loading={loadingLinks}
-                origin={origin}
-                onNavigateToHome={handleNavigateToHome}
-                onOpenAnalytics={handleOpenAnalytics}
-                onOpenQR={handleOpenQR}
-                onEditDestination={handleEditDestination}
-                onToggleStatus={handleToggleStatus}
-                onDelete={handleDeleteLink}
-                onBulkToggleStatus={handleBulkToggleStatus}
-                onBulkDelete={handleBulkDelete}
-              />
-            </motion.div>
-          ) : activeTab === 'system' ? (
-            <motion.div
-              key="view-system"
-              initial={{ opacity: 0, y: 10, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
-              transition={{
-                type: 'spring',
-                stiffness: 380,
-                damping: 32,
-                mass: 0.75,
-              }}
-              className="w-full"
-            >
-              <SystemStatusView
-                healthStatus={healthStatus}
-                links={links}
-                onRefreshHealth={handleRefreshHealth}
-                isRefreshingHealth={refreshingHealth}
-              />
-            </motion.div>
           ) : (
             <motion.div
-              key="view-settings"
-              initial={{ opacity: 0, y: 10, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
+              key="main-tabs-track"
+              className="flex w-full items-start"
+              animate={{ x: `-${TAB_LIST.indexOf(activeTab) * 100}%` }}
               transition={{
                 type: 'spring',
-                stiffness: 380,
-                damping: 32,
-                mass: 0.75,
+                stiffness: 300,
+                damping: 26,
+                mass: 0.85,
               }}
-              className="w-full"
             >
-              <SettingsView
-                links={links}
-                onClearLocalData={() => {
-                  setLinks([]);
-                  setSelectedLinkForDetail(null);
-                  showToast('Riwayat peramban lokal telah dibersihkan.');
-                }}
-              />
+              {/* Tab 0: Shorten */}
+              <div className="w-full shrink-0 min-w-full">
+                <HomeView
+                  origin={origin}
+                  userLinks={links}
+                  onLinkCreated={handleLinkCreated}
+                  onOpenQR={handleOpenQR}
+                  onOpenAnalytics={handleOpenAnalytics}
+                />
+              </div>
+
+              {/* Tab 1: My Links */}
+              <div className="w-full shrink-0 min-w-full">
+                <LinksView
+                  links={links}
+                  loading={loadingLinks}
+                  origin={origin}
+                  onNavigateToHome={handleNavigateToHome}
+                  onOpenAnalytics={handleOpenAnalytics}
+                  onOpenQR={handleOpenQR}
+                  onEditDestination={handleEditDestination}
+                  onToggleStatus={handleToggleStatus}
+                  onDelete={handleDeleteLink}
+                  onBulkToggleStatus={handleBulkToggleStatus}
+                  onBulkDelete={handleBulkDelete}
+                />
+              </div>
+
+              {/* Tab 2: System Status */}
+              <div className="w-full shrink-0 min-w-full">
+                <SystemStatusView
+                  healthStatus={healthStatus}
+                  links={links}
+                  onRefreshHealth={handleRefreshHealth}
+                  isRefreshingHealth={refreshingHealth}
+                />
+              </div>
+
+              {/* Tab 3: Data & Settings */}
+              <div className="w-full shrink-0 min-w-full">
+                <SettingsView
+                  links={links}
+                  onClearLocalData={() => {
+                    setLinks([]);
+                    setSelectedLinkForDetail(null);
+                    showToast('Riwayat peramban lokal telah dibersihkan.');
+                  }}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -309,7 +309,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                 animate={{ opacity: 1, height: 'auto', y: 0 }}
                 exit={{ opacity: 0, height: 0, y: -4 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="mt-2.5 p-4 rounded-3xl bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md border border-neutral-200/80 dark:border-neutral-800 shadow-sm space-y-4 overflow-hidden"
+                className="mt-2.5 p-4 rounded-3xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs space-y-4 overflow-hidden"
               >
                 {/* Custom Alias */}
                 <div>

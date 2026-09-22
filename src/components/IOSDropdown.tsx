@@ -162,11 +162,7 @@ export function IOSDropdown<T extends string = string>({
               fullWidth ? 'w-full' : 'w-auto'
             } ${
               align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'
-            } rounded-2xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-neutral-200/90 dark:border-neutral-800 shadow-2xl p-1.5 space-y-0.5 max-h-64 overflow-y-auto ${menuClassName}`}
-            style={{
-              boxShadow:
-                '0 16px 36px -6px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08) inset',
-            }}
+            } rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl p-1.5 space-y-0.5 max-h-64 overflow-y-auto ${menuClassName}`}
           >
             {options.map((opt) => {
               const isSelected = opt.value === value;

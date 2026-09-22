@@ -490,15 +490,13 @@ export const LinkDetailView: React.FC<LinkDetailViewProps> = ({ link, origin, on
                   data={chartData}
                   margin={{ top: 10, right: 8, left: -24, bottom: 0 }}
                   onMouseMove={(state: any) => {
-                    if (state?.activeTooltipIndex !== undefined) {
-                      setHoveredBarIndex(
-                        typeof state.activeTooltipIndex === 'number'
-                          ? state.activeTooltipIndex
-                          : null
-                      );
-                    }
+                    const newIndex =
+                      typeof state?.activeTooltipIndex === 'number'
+                        ? state.activeTooltipIndex
+                        : null;
+                    setHoveredBarIndex((prev) => (prev === newIndex ? prev : newIndex));
                   }}
-                  onMouseLeave={() => setHoveredBarIndex(null)}
+                  onMouseLeave={() => setHoveredBarIndex((prev) => (prev === null ? prev : null))}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"

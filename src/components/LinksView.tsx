@@ -470,7 +470,7 @@ export const LinksView: React.FC<LinksViewProps> = ({
           />
         </div>
       ) : (
-        <motion.div layout className="space-y-3 pb-12 sm:pb-4">
+        <div className="space-y-3 pb-12 sm:pb-4">
           <AnimatePresence mode="popLayout">
             {filteredLinks.map((link) => (
               <LinkCard
@@ -495,18 +495,20 @@ export const LinksView: React.FC<LinksViewProps> = ({
               />
             ))}
           </AnimatePresence>
-        </motion.div>
+        </div>
       )}
 
       {/* Bulk Delete Modal */}
-      {showBulkDeleteModal && (
-        <BulkDeleteModal
-          selectedLinks={selectedLinksList}
-          isOpen={showBulkDeleteModal}
-          onClose={() => setShowBulkDeleteModal(false)}
-          onConfirm={handleConfirmBulkDelete}
-        />
-      )}
+      <AnimatePresence>
+        {showBulkDeleteModal && (
+          <BulkDeleteModal
+            selectedLinks={selectedLinksList}
+            isOpen={showBulkDeleteModal}
+            onClose={() => setShowBulkDeleteModal(false)}
+            onConfirm={handleConfirmBulkDelete}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

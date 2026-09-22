@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 
 interface EmptyStateProps {
   illustration: React.ReactNode;
@@ -18,15 +18,17 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   description,
   action,
 }) => {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="py-12 px-4 text-center max-w-sm mx-auto flex flex-col items-center"
     >
       <motion.div
-        animate={{ y: [0, -6, 0] }}
+        animate={shouldReduceMotion ? {} : { y: [0, -6, 0] }}
         transition={{
           repeat: Infinity,
           duration: 4,

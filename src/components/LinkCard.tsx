@@ -191,11 +191,11 @@ export const LinkCard: React.FC<LinkCardProps> = memo(({
             onToggleSelect?.(link.internal_id);
           }
         }}
-        className={`p-4 sm:p-5 rounded-3xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border hover:border-neutral-300 dark:hover:border-neutral-700 shadow-sm transition-all text-left relative group ${
+        className={`p-4 sm:p-5 rounded-3xl bg-white dark:bg-neutral-900 border hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs transition-colors text-left relative group ${
           isSelectionMode ? 'cursor-pointer select-none' : ''
         } ${
           isSelected
-            ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-900/20 dark:ring-white/20 bg-neutral-50/90 dark:bg-neutral-850'
+            ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-900/20 dark:ring-white/20 bg-neutral-50 dark:bg-neutral-850'
             : 'border-neutral-200/80 dark:border-neutral-800'
         } ${isOpen ? 'z-30' : 'z-0'}`}
       >

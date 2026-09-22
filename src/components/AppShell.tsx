@@ -10,6 +10,8 @@ interface AppShellProps {
   onSelectTab: (tab: 'home' | 'links' | 'system' | 'settings') => void;
   linksCount: number;
   healthStatus: HealthStatus | null;
+  isSwiping?: boolean;
+  swipeProgress?: number;
   children: React.ReactNode;
 }
 
@@ -18,6 +20,8 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
   onSelectTab,
   linksCount,
   healthStatus,
+  isSwiping = false,
+  swipeProgress = 0,
   children,
 }) => {
   const handleTabChange = (tab: 'home' | 'links' | 'system' | 'settings') => {
@@ -60,7 +64,7 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
           </button>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden sm:flex items-center gap-1 bg-neutral-100/60 dark:bg-neutral-900/60 p-1 rounded-full border border-neutral-200/50 dark:border-neutral-800/50" role="tablist">
+          <nav className="hidden sm:flex items-center gap-1 bg-neutral-100/70 dark:bg-neutral-900/70 p-1 rounded-full border border-neutral-200/60 dark:border-neutral-800/60" role="tablist">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
@@ -70,7 +74,7 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => handleTabChange(item.id)}
-                  className={`relative px-4 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                  className={`relative px-4 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer select-none outline-none ${
                     isActive
                       ? 'text-white dark:text-neutral-950 font-semibold'
                       : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
@@ -79,9 +83,28 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
                   {isActive && (
                     <motion.div
                       layoutId="desktop-active-nav-pill"
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                      className="absolute inset-0 rounded-full bg-neutral-900 dark:bg-white shadow-sm"
-                    />
+                      animate={{ scale: isSwiping ? 1.25 : 1 }}
+                      transition={{
+                        layout: { type: 'spring', stiffness: 320, damping: 26, mass: 0.85 },
+                        scale: { type: 'spring', stiffness: 200, damping: 19, mass: 0.85 },
+                      }}
+                      className="absolute inset-0 rounded-full bg-neutral-900 dark:bg-white shadow-sm overflow-hidden"
+                    >
+                      {/* Subtle Indicator Progress Bar tracking horizontal swipe */}
+                      <div className="absolute bottom-0.5 inset-x-2 h-[2px] rounded-full overflow-hidden bg-white/20 dark:bg-black/15 pointer-events-none">
+                        <motion.div
+                          className="h-full bg-white dark:bg-neutral-950 rounded-full"
+                          animate={{
+                            width: isSwiping ? `${Math.max(swipeProgress * 100, 8)}%` : '0%',
+                            opacity: isSwiping ? 1 : 0,
+                          }}
+                          transition={{
+                            width: { type: 'spring', stiffness: 300, damping: 26 },
+                            opacity: { duration: 0.15 },
+                          }}
+                        />
+                      </div>
+                    </motion.div>
                   )}
                   <span className="relative z-10 inline-flex items-center gap-1.5">
                     <span>{item.label}</span>
@@ -124,105 +147,80 @@ export const AppShell: React.FC<AppShellProps> = React.memo(({
       </main>
 
       {/* Mobile Bottom Navigation Bar (Floating Pill Capsule iOS-Style) */}
-      <nav
+      <motion.nav
         id="mobile-bottom-nav"
-        className="sm:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-fit z-40 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl border border-neutral-200/80 dark:border-neutral-800/80 p-1 rounded-full flex items-center gap-1 shadow-xl shadow-neutral-950/10 dark:shadow-black/50"
+        animate={{ scale: isSwiping ? 1.02 : 1 }}
+        transition={{
+          type: 'spring',
+          stiffness: 280,
+          damping: 24,
+          mass: 0.8,
+        }}
+        className="sm:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-fit max-w-[95vw] z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-2xl border border-neutral-200/80 dark:border-neutral-800/80 p-1 rounded-full flex items-center gap-0.5 shadow-2xl shadow-neutral-950/15 dark:shadow-black/60 origin-center"
         aria-label="Navigasi Bawah Seluler"
         role="tablist"
       >
-        <button
-          id="mobile-tab-home"
-          role="tab"
-          aria-selected={activeTab === 'home'}
-          onClick={() => handleTabChange('home')}
-          className={`relative flex flex-col items-center justify-center px-4.5 py-2 min-h-[38px] min-w-[72px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
-            activeTab === 'home'
-              ? 'text-neutral-950 dark:text-white font-semibold'
-              : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          {activeTab === 'home' && (
-            <motion.div
-              layoutId="mobile-active-nav-bubble"
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
-            />
-          )}
-          <Link2 className="w-4 h-4" />
-          <span className="text-[9px] tracking-tight">Shorten</span>
-        </button>
-
-        <button
-          id="mobile-tab-links"
-          role="tab"
-          aria-selected={activeTab === 'links'}
-          onClick={() => handleTabChange('links')}
-          className={`relative flex flex-col items-center justify-center px-4.5 py-2 min-h-[38px] min-w-[72px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
-            activeTab === 'links'
-              ? 'text-neutral-950 dark:text-white font-semibold'
-              : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          {activeTab === 'links' && (
-            <motion.div
-              layoutId="mobile-active-nav-bubble"
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
-            />
-          )}
-          <List className="w-4 h-4" />
-          <span className="text-[9px] tracking-tight">My Links</span>
-          {linksCount > 0 && (
-            <span className="absolute top-1 right-2 px-1 rounded-full text-[8px] font-mono font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900">
-              {linksCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          id="mobile-tab-system"
-          role="tab"
-          aria-selected={activeTab === 'system'}
-          onClick={() => handleTabChange('system')}
-          className={`relative flex flex-col items-center justify-center px-4 py-2 min-h-[38px] min-w-[64px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
-            activeTab === 'system'
-              ? 'text-neutral-950 dark:text-white font-semibold'
-              : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          {activeTab === 'system' && (
-            <motion.div
-              layoutId="mobile-active-nav-bubble"
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
-            />
-          )}
-          <Activity className="w-4 h-4" />
-          <span className="text-[9px] tracking-tight">System</span>
-        </button>
-
-        <button
-          id="mobile-tab-settings"
-          role="tab"
-          aria-selected={activeTab === 'settings'}
-          onClick={() => handleTabChange('settings')}
-          className={`relative flex flex-col items-center justify-center px-4.5 py-2 min-h-[38px] min-w-[72px] gap-0.5 rounded-full transition-all cursor-pointer active:scale-95 ${
-            activeTab === 'settings'
-              ? 'text-neutral-950 dark:text-white font-semibold'
-              : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          {activeTab === 'settings' && (
-            <motion.div
-              layoutId="mobile-active-nav-bubble"
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-800/80 -z-10"
-            />
-          )}
-          <Settings className="w-4 h-4" />
-          <span className="text-[9px] tracking-tight">Settings</span>
-        </button>
-      </nav>
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              id={`mobile-tab-${item.id}`}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => handleTabChange(item.id)}
+              className={`relative flex flex-col items-center justify-center px-3.5 py-1.5 min-h-[38px] min-w-[66px] gap-0.5 rounded-full transition-colors duration-150 cursor-pointer select-none outline-none active:scale-95 ${
+                isActive
+                  ? 'text-white dark:text-neutral-950 font-semibold'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="mobile-active-nav-pill"
+                  animate={{ scale: isSwiping ? 1.25 : 1 }}
+                  transition={{
+                    layout: { type: 'spring', stiffness: 320, damping: 26, mass: 0.85 },
+                    scale: { type: 'spring', stiffness: 200, damping: 19, mass: 0.85 },
+                  }}
+                  className="absolute inset-0 rounded-full bg-neutral-900 dark:bg-white shadow-sm overflow-hidden"
+                >
+                  {/* Subtle Indicator Progress Bar tracking horizontal swipe */}
+                  <div className="absolute bottom-0.5 inset-x-2 h-[2px] rounded-full overflow-hidden bg-white/20 dark:bg-black/15 pointer-events-none">
+                    <motion.div
+                      className="h-full bg-white dark:bg-neutral-950 rounded-full"
+                      animate={{
+                        width: isSwiping ? `${Math.max(swipeProgress * 100, 8)}%` : '0%',
+                        opacity: isSwiping ? 1 : 0,
+                      }}
+                      transition={{
+                        width: { type: 'spring', stiffness: 300, damping: 26 },
+                        opacity: { duration: 0.15 },
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+              <Icon className="w-4 h-4 relative z-10" />
+              <span className="text-[9px] tracking-tight relative z-10 leading-none">
+                {item.label === 'Shorten' ? 'Shorten' : item.label === 'My Links' ? 'Links' : item.label === 'System Status' ? 'Status' : 'Settings'}
+              </span>
+              {item.id === 'links' && linksCount > 0 && (
+                <span
+                  className={`absolute top-0.5 right-2 px-1 rounded-full text-[8px] font-mono font-bold relative z-10 ${
+                    isActive
+                      ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-neutral-900'
+                      : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
+                  }`}
+                >
+                  {linksCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </motion.nav>
 
       {/* Footer */}
       <footer className="w-full text-center text-xs text-neutral-400 dark:text-neutral-600 py-4 hidden sm:block">
